@@ -10,7 +10,6 @@
             --primary: #5d8a5d; --bg: #f0f4f0; --card: #ffffff;
             --text: #2d3e2d; --border: #ddd; --blue: #4a90e2; --dark-blue: #357abd;
             --gauge-red: #ff4d4d; --gauge-green: #4caf50; --gauge-blue: #2196f3;
-            --trend-fast: #ef4444; --trend-slow: #10b981;
         }
 
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: var(--text); -webkit-tap-highlight-color: transparent; }
@@ -47,7 +46,6 @@
         .moisture-wrap { background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #eee; }
         .moisture-controls { display: flex; align-items: center; gap: 12px; }
         
-        /* Redesigned Slider - No more Lock Icon */
         .gauge-slider { 
             flex-grow: 1; height: 10px; border-radius: 5px; -webkit-appearance: none; appearance: none; 
             background: #ddd; transition: opacity 0.3s;
@@ -145,6 +143,7 @@
         });
     }
 
+    // Helper to calculate the current decay level
     function calculateDynamicMoisture(plant) {
         if (!plant.watered_date) return plant.moisture_level || 5;
         const lastDate = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
@@ -201,10 +200,85 @@
         filterList();
     }
 
+    // --- UPDATED MANUAL ENTRY ---
+    async function manualEntry(id, val) {
+        if (!isAuthenticated) { loadData(); return; } // Safety check
+        
+        const newTimestamp = new Date().toISOString();
+        const intVal = parseInt(val);
+
+        // Update local memory immediately so it doesn't "flip back"
+        const plantIndex = allPlants.findIndex(p => p.id === id);
+        if (plantIndex !== -1) {
+            allPlants[plantIndex].moisture_level = intVal;
+            allPlants[plantIndex].moisture_timestamp = newTimestamp;
+        }
+
+        updateStatus("Saving...", "saving");
+        
+        const { error } = await _supabase.from('plants')
+            .update({ 
+                moisture_level: intVal, 
+                moisture_timestamp: newTimestamp 
+            })
+            .eq('id', id);
+
+        if (error) {
+            console.error("Save failed:", error);
+            updateStatus("Error!", "saving");
+        } else {
+            updateStatus("Saved", "saved");
+        }
+    }
+
+    async function startWater(id) {
+        if (!(await checkAuth())) return;
+        document.getElementById(`fill-${id}`).style.width = '100%';
+        waterTimer = setTimeout(async () => {
+            const today = new Date().toISOString().split('T')[0];
+            const now = new Date().toISOString();
+            
+            // Update local memory first
+            const plantIndex = allPlants.findIndex(p => p.id === id);
+            if (plantIndex !== -1) {
+                allPlants[plantIndex].watered_date = today;
+                allPlants[plantIndex].moisture_level = 10;
+                allPlants[plantIndex].moisture_timestamp = now;
+            }
+
+            await _supabase.from('plants').update({ 
+                watered_date: today, 
+                moisture_level: 10, 
+                moisture_timestamp: now
+            }).eq('id', id);
+            
+            renderAll(); // Fast local re-render
+            updateStatus("Watered!", "saved");
+        }, 1000);
+    }
+
+    // Standard text field sync
+    async function queueSync(id, col, val) {
+        if (!isAuthenticated && !(await checkAuth())) { loadData(); return; }
+        
+        // Update local memory
+        const plantIndex = allPlants.findIndex(p => p.id === id);
+        if (plantIndex !== -1) allPlants[plantIndex][col] = val;
+
+        updateStatus("Saving...", "saving");
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(async () => {
+            await _supabase.from('plants').update({ [col]: val }).eq('id', id);
+            if (col === 'location') updateRoomDropdown();
+            updateStatus("Saved", "saved");
+        }, 800);
+    }
+
     async function deletePlant(id) {
         if (!confirm("Permanently remove?")) return;
         await _supabase.from('plants').delete().eq('id', id);
-        loadData();
+        allPlants = allPlants.filter(p => p.id !== id);
+        renderAll();
     }
 
     async function triggerPhotoUpload(id) {
@@ -219,49 +293,29 @@
         const fileName = `${id}-${Date.now()}.png`;
         await _supabase.storage.from('plant-photos').upload(fileName, file);
         const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
+        
         await _supabase.from('plants').update({ image_url: urlData.publicUrl }).eq('id', id);
-        loadData();
-    }
-
-    async function manualEntry(id, val) {
-        if (!isAuthenticated && !(await checkAuth())) { loadData(); return; }
-        await _supabase.from('plants').update({ 
-            moisture_level: parseInt(val), 
-            moisture_timestamp: new Date().toISOString() 
-        }).eq('id', id);
-        updateStatus("Saved", "saved");
-    }
-
-    async function startWater(id) {
-        if (!(await checkAuth())) return;
-        document.getElementById(`fill-${id}`).style.width = '100%';
-        waterTimer = setTimeout(async () => {
-            const today = new Date().toISOString().split('T')[0];
-            await _supabase.from('plants').update({ 
-                watered_date: today, moisture_level: 10, 
-                moisture_timestamp: new Date().toISOString()
-            }).eq('id', id);
-            loadData();
-        }, 1000);
-    }
-
-    async function queueSync(id, col, val) {
-        if (!isAuthenticated && !(await checkAuth())) { loadData(); return; }
-        updateStatus("Saving...", "saving");
-        clearTimeout(syncTimer);
-        syncTimer = setTimeout(async () => {
-            await _supabase.from('plants').update({ [col]: val }).eq('id', id);
-            if (col === 'location') updateRoomDropdown();
-            updateStatus("Saved", "saved");
-        }, 1000);
+        
+        const plantIndex = allPlants.findIndex(p => p.id === id);
+        if (plantIndex !== -1) allPlants[plantIndex].image_url = urlData.publicUrl;
+        
+        renderAll();
+        updateStatus("Photo Saved", "saved");
     }
 
     async function addNewPlant() {
         if (!(await checkAuth())) return;
         const n = prompt("Plant Name:");
         if (n) {
-            await _supabase.from('plants').insert([{ name: n, moisture_level: 10, watered_date: new Date().toISOString().split('T')[0] }]);
-            loadData();
+            const { data } = await _supabase.from('plants').insert([{ 
+                name: n, 
+                moisture_level: 10, 
+                watered_date: new Date().toISOString().split('T')[0] 
+            }]).select();
+            if (data) {
+                allPlants.push(data[0]);
+                renderAll();
+            }
         }
     }
 
