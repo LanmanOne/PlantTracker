@@ -14,16 +14,8 @@
 
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: var(--text); -webkit-tap-highlight-color: transparent; }
         
-        /* THE GRID MAGIC */
         .container { max-width: 1200px; margin: auto; padding-bottom: 100px; }
         
-        #plant-list { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
-            gap: 20px; 
-            padding: 10px;
-        }
-
         .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 10px; position: sticky; top: 0; background: var(--bg); z-index: 100; }
         h1 { margin: 0; font-size: 1.6rem; color: #3e5c3e; font-weight: 800; }
         
@@ -31,32 +23,38 @@
         .status-saving { background: #fff3cd !important; color: #856404 !important; }
         .status-saved { background: #d4edda !important; color: #155724 !important; }
 
-        .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; position: relative; border-left: 5px solid transparent; transition: transform 0.2s; }
-        .plant-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        #plant-list { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
+            gap: 20px; 
+            padding: 10px;
+        }
+
+        .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; position: relative; border-left: 5px solid transparent; }
         .card-dry { border-left-color: var(--gauge-red); }
 
-        .delete-btn { position: absolute; top: 12px; right: 12px; background: #fee2e2; border: 1px solid #fecaca; color: #dc2626; font-size: 0.7rem; border-radius: 6px; cursor: pointer; padding: 3px 6px; font-weight: bold; }
+        .delete-btn { position: absolute; top: 12px; right: 12px; background: #fee2e2; border: 1px solid #fecaca; color: #dc2626; font-size: 0.7rem; border-radius: 6px; cursor: pointer; padding: 3px 8px; font-weight: bold; z-index: 10; }
 
         .card-top { display: grid; grid-template-columns: 80px 1fr; gap: 15px; align-items: flex-start; margin-top: 15px; }
         .photo-box { width: 80px; height: 80px; border: 2px dashed #a8c6a8; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fafafa; cursor: pointer; flex-shrink: 0; }
         .photo-box img { width: 100%; height: 100%; object-fit: cover; }
 
-        .name-gauge-container { display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
-        .name-input { font-weight: bold; font-size: 1.1rem; border: none; border-bottom: 1px solid transparent; padding: 5px 0; width: 100%; outline: none; background: transparent; text-overflow: ellipsis; }
+        .name-gauge-container { display: flex; flex-direction: column; gap: 8px; }
+        .name-input { font-weight: bold; font-size: 1.1rem; border: none; border-bottom: 1px solid transparent; padding: 5px 0; width: 100%; outline: none; background: transparent; }
 
         .moisture-wrap { background: #f9f9f9; padding: 8px; border-radius: 8px; border: 1px solid #eee; }
         .moisture-controls { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
-        .unlock-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid #ccc; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .unlock-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid #ccc; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; }
         
         .gauge-slider { flex-grow: 1; height: 8px; border-radius: 5px; -webkit-appearance: none; appearance: none; outline: none; background: #ddd; opacity: 0.4; pointer-events: none; }
         .gauge-slider.unlocked { opacity: 1; pointer-events: auto; }
         .moisture-val { font-weight: 900; font-size: 1.1rem; min-width: 25px; text-align: center; }
         .timestamp { font-size: 0.6rem; color: #aaa; font-style: italic; margin-top: 4px; display: block; text-align: right; }
 
-        .notes-area { width: 100%; min-height: 50px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; resize: vertical; font-family: inherit; box-sizing: border-box; }
+        .notes-area { width: 100%; min-height: 50px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; resize: none; font-family: inherit; box-sizing: border-box; }
 
-        .action-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: auto; }
-        input[type="date"] { padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; flex-grow: 1; }
+        .action-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        input[type="date"] { padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; flex: 1; min-width: 0; }
 
         .water-btn-wrap { position: relative; width: 130px; height: 38px; overflow: hidden; border-radius: 8px; background: var(--blue); flex-shrink: 0; }
         .water-btn { position: relative; z-index: 2; width: 100%; height: 100%; background: transparent; color: white; border: none; font-size: 0.7rem; font-weight: bold; cursor: pointer; }
@@ -70,7 +68,7 @@
 <div class="container">
     <div class="header">
         <h1>🌿 Logan's Garden</h1>
-        <div id="status">Syncing...</div>
+        <div id="status">Connecting...</div>
     </div>
     <div id="plant-list"></div>
 </div>
@@ -86,19 +84,21 @@
 
     async function loadData() {
         updateStatus('Loading...', 'saving');
-        // This 'order' line will only work if you have the created_at column!
-        const { data, error } = await _supabase.from('plants').select('*').order('created_at', { ascending: true });
-        
-        if (error) {
-            console.error(error);
-            updateStatus('Error', 'saving');
-            return;
-        }
+        try {
+            // Loading without .order() first to bypass 400 errors if created_at is missing
+            const { data, error } = await _supabase.from('plants').select('*');
+            
+            if (error) throw error;
 
-        const list = document.getElementById('plant-list');
-        list.innerHTML = '';
-        data.forEach(plant => renderPlantCard(plant));
-        updateStatus('Synced', 'saved');
+            const list = document.getElementById('plant-list');
+            list.innerHTML = '';
+            if (data) data.forEach(plant => renderPlantCard(plant));
+            updateStatus('Synced', 'saved');
+        } catch (err) {
+            console.error(err);
+            alert("Database Connection Error: " + err.message);
+            updateStatus('Error', 'saving');
+        }
     }
 
     function renderPlantCard(plant) {
@@ -108,7 +108,7 @@
         card.className = 'plant-card';
         card.id = `card-${id}`;
         card.innerHTML = `
-            <button class="delete-btn" onclick="deletePlant('${id}', '${plant.name || 'this plant'}')">✕</button>
+            <button class="delete-btn" onclick="deletePlant('${id}', '${plant.name || 'this plant'}')">Remove</button>
             <div class="card-top">
                 <div class="photo-box" onclick="document.getElementById('file-${id}').click()">
                     <input type="file" id="file-${id}" style="display:none" accept="image/*" onchange="uploadPhoto('${id}', this)">
@@ -123,7 +123,7 @@
                             <input type="range" id="gauge-${id}" class="gauge-slider" min="1" max="10" value="${plant.moisture_level || 1}" oninput="updateGauge('${id}', true)" onchange="lockGauge('${id}')">
                             <span id="val-${id}" class="moisture-val">${plant.moisture_level || 1}</span>
                         </div>
-                        <span id="time-${id}" class="timestamp">${plant.moisture_timestamp ? plant.moisture_timestamp : 'Not set'}</span>
+                        <span id="time-${id}" class="timestamp">${plant.moisture_timestamp || 'Not set'}</span>
                         <input type="hidden" id="ts-hidden-${id}" value="${plant.moisture_timestamp || ''}">
                     </div>
                 </div>
@@ -133,7 +133,7 @@
                 <input type="date" id="date-${id}" value="${plant.watered_date || ''}" onchange="queueSync('${id}')">
                 <div class="water-btn-wrap">
                     <div id="fill-${id}" class="water-fill"></div>
-                    <button class="water-btn" onmousedown="startWaterHold('${id}')" onmouseup="cancelWaterHold('${id}')" ontouchstart="startWaterHold('${id}')" ontouchend="cancelWaterHold('${id}')">💧 HOLD</button>
+                    <button class="water-btn" onmousedown="startWaterHold('${id}')" onmouseup="cancelWaterHold('${id}')" ontouchstart="startWaterHold('${id}')" ontouchend="cancelWaterHold('${id}')">💧 HOLD WATER</button>
                 </div>
             </div>
         `;
@@ -142,18 +142,23 @@
     }
 
     async function addNewPlant() {
-        const name = prompt("Plant Name:");
+        const name = prompt("Enter Plant Name:");
         if (!name) return;
         updateStatus('Adding...', 'saving');
-        const { data } = await _supabase.from('plants').insert([{ name: name }]).select();
+        const { data, error } = await _supabase.from('plants').insert([{ name: name }]).select();
+        if (error) alert(error.message);
         if (data) renderPlantCard(data[0]);
         updateStatus('Synced', 'saved');
     }
 
     async function deletePlant(id, name) {
-        if (!confirm(`Delete ${name}?`)) return;
-        await _supabase.from('plants').delete().eq('id', id);
-        document.getElementById(`card-${id}`).remove();
+        if (!confirm(`Permanently remove ${name}?`)) return;
+        updateStatus('Deleting...', 'saving');
+        const { error } = await _supabase.from('plants').delete().eq('id', id);
+        if (!error) {
+            document.getElementById(`card-${id}`).remove();
+            updateStatus('Synced', 'saved');
+        }
     }
 
     function queueSync(id) {
@@ -172,3 +177,56 @@
             moisture_timestamp: document.getElementById(`ts-hidden-${id}`).value
         };
         await _supabase.from('plants').update(rowData).eq('id', id);
+        updateStatus('Synced', 'saved');
+    }
+
+    function updateGauge(id, shouldTs) {
+        const g = document.getElementById(`gauge-${id}`);
+        const v = document.getElementById(`val-${id}`);
+        const card = document.getElementById(`card-${id}`);
+        const val = g.value;
+        v.innerText = val;
+        let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
+        if (val <= 3) card.classList.add('card-dry'); else card.classList.remove('card-dry');
+        v.style.color = color;
+        g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
+        if(shouldTs) {
+            const ts = new Date().toLocaleDateString([], { month: 'short', day: 'numeric' }) + ", " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            document.getElementById(`time-${id}`).innerText = ts;
+            document.getElementById(`ts-hidden-${id}`).value = ts;
+            queueSync(id);
+        }
+    }
+
+    function startHold(id) { holdTimer = setTimeout(() => { document.getElementById(`gauge-${id}`).classList.add('unlocked'); document.getElementById(`lock-${id}`).innerText = '🔓'; }, 800); }
+    function endHold() { clearTimeout(holdTimer); }
+    function lockGauge(id) { document.getElementById(`gauge-${id}`).classList.remove('unlocked'); document.getElementById(`lock-${id}`).innerText = '🔒'; }
+    
+    function startWaterHold(id) { document.getElementById(`fill-${id}`).style.width = '100%'; waterTimer = setTimeout(() => waterNow(id), 1000); }
+    function cancelWaterHold(id) { clearTimeout(waterTimer); const f = document.getElementById(`fill-${id}`); f.style.transition = 'none'; f.style.width = '0%'; setTimeout(() => f.style.transition = 'width 1s linear', 10); }
+    
+    function waterNow(id) { 
+        document.getElementById(`date-${id}`).value = new Date().toISOString().split('T')[0]; 
+        queueSync(id); 
+    }
+
+    function updateStatus(t, c) { const s = document.getElementById('status'); s.innerText = t; s.className = ''; if(c) s.classList.add('status-'+c); }
+
+    async function uploadPhoto(id, input) {
+        const file = input.files[0]; if (!file) return;
+        updateStatus('Uploading...', 'saving');
+        const fileName = `plant-${id}-${Date.now()}.png`;
+        const { data, error } = await _supabase.storage.from('plant-photos').upload(fileName, file);
+        if (!error) {
+            const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
+            document.getElementById(`img-${id}`).src = urlData.publicUrl;
+            document.getElementById(`img-${id}`).style.display = 'block';
+            document.getElementById(`label-${id}`).style.display = 'none';
+            savePlant(id);
+        }
+    }
+
+    loadData();
+</script>
+</body>
+</html>
