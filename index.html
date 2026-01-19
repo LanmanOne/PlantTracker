@@ -28,6 +28,11 @@
         .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; position: relative; border-left: 5px solid transparent; }
         .card-dry { border-left-color: var(--gauge-red); background: #fff9f9; }
 
+        .card-header { display: flex; justify-content: space-between; align-items: center; }
+        .location-input { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #888; border: none; background: transparent; outline: none; font-weight: bold; flex: 1; }
+        .btn-delete { background: none; border: none; cursor: pointer; font-size: 1.1rem; color: #ddd; transition: color 0.2s; padding: 0 5px; }
+        .btn-delete:hover { color: var(--gauge-red); }
+
         .card-top { display: grid; grid-template-columns: 80px 1fr; gap: 15px; align-items: flex-start; }
         .photo-box { width: 80px; height: 80px; border: 2px dashed #a8c6a8; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fafafa; cursor: pointer; position: relative; }
         .photo-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
@@ -40,12 +45,11 @@
         .trend-fast { color: var(--trend-fast); }
         .trend-slow { color: var(--trend-slow); }
 
-        .unlock-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid #ccc; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .unlock-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid #ccc; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
         .gauge-slider { flex-grow: 1; height: 8px; border-radius: 5px; -webkit-appearance: none; appearance: none; background: #ddd; opacity: 0.4; pointer-events: none; }
         .gauge-slider.unlocked { opacity: 1; pointer-events: auto; }
 
         .badge-ai { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
-        .location-input { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #888; border: none; background: transparent; outline: none; width: 100%; font-weight: bold; }
         .name-input { font-size: 1rem; font-weight: bold; border: none; background: transparent; outline: none; width: 100%; margin-bottom: 5px; }
 
         .water-btn-wrap { position: relative; width: 130px; height: 38px; overflow: hidden; border-radius: 8px; background: var(--blue); }
@@ -55,6 +59,7 @@
         .add-plant-btn { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 200; cursor: pointer; }
         
         .lock-status { font-size: 0.7rem; color: #888; margin-left: 5px; font-weight: normal; }
+        #status { font-size: 0.8rem; font-weight: bold; color: #aaa; }
     </style>
 </head>
 <body>
@@ -82,7 +87,7 @@
 
     let allPlants = [];
     let waterTimer, holdTimer, syncTimer;
-    let isAuthenticated = false; // Tracks session unlock
+    let isAuthenticated = false; 
 
     async function loadData() {
         const { data } = await _supabase.from('plants').select('*');
@@ -91,7 +96,7 @@
         renderAll();
     }
 
-    // --- SECURITY LOGIC ---
+    // --- SECURITY ---
     async function checkAuth() {
         if (isAuthenticated) return true;
         const pwd = prompt("Enter password to unlock changes:");
@@ -103,6 +108,7 @@
             isAuthenticated = true;
             document.getElementById('lock-label').innerText = "(🔓 Unlocked)";
             document.getElementById('lock-label').style.color = "var(--primary)";
+            renderAll(); // Re-render to show delete buttons
             return true;
         } else {
             alert("Incorrect password.");
@@ -129,7 +135,7 @@
     function getTrend(plant) {
         if (!plant.avg_water_interval) return { icon: '', class: '' };
         if (plant.avg_water_interval <= 5) return { icon: '↓↓', class: 'trend-fast' };
-        if (plant.avg_water_interval >= 10) return { icon: '↓', class: 'trend-slow' };
+        if (plant.avg_water_interval >= 12) return { icon: '↓', class: 'trend-slow' };
         return { icon: '↓', class: '' };
     }
 
@@ -152,7 +158,10 @@
             const card = document.createElement('div');
             card.className = `plant-card ${currentLevel <= 3 ? 'card-dry' : ''}`;
             card.innerHTML = `
-                <input type="text" class="location-input" value="${plant.location || 'UNSET'}" oninput="queueSync('${id}', 'location', this.value)">
+                <div class="card-header">
+                    <input type="text" class="location-input" value="${plant.location || 'UNSET ROOM'}" oninput="queueSync('${id}', 'location', this.value)">
+                    ${isAuthenticated ? `<button class="btn-delete" onclick="deletePlant('${id}')">🗑️</button>` : ''}
+                </div>
                 <div class="card-top">
                     <div class="photo-box" onclick="triggerPhotoUpload('${id}')">
                         <input type="file" id="file-${id}" style="display:none" accept="image/*,.pdf" onchange="uploadPhoto('${id}', this)">
@@ -185,6 +194,7 @@
         filterList();
     }
 
+    // --- ACTIONS ---
     async function triggerPhotoUpload(id) {
         if (!(await checkAuth())) return;
         document.getElementById(`file-${id}`).click();
@@ -210,7 +220,7 @@
         if (plant.watered_date) {
             const days = (new Date() - new Date(plant.watered_date)) / (1000 * 60 * 60 * 24);
             const points = 10 - val;
-            if (points > 0) {
+            if (points > 0 && days > 0) {
                 const implied = (days * 10) / points;
                 plant.avg_water_interval = Math.round(((plant.avg_water_interval || implied) + implied) / 2);
             }
@@ -242,6 +252,15 @@
         }, 1000);
     }
 
+    async function deletePlant(id) {
+        if (!(await checkAuth())) return;
+        const plant = allPlants.find(p => p.id === id);
+        if (!confirm(`Permanently remove ${plant.name}?`)) return;
+        updateStatus("Removing...", "saving");
+        await _supabase.from('plants').delete().eq('id', id);
+        loadData();
+    }
+
     async function queueSync(id, col, val) {
         if (!isAuthenticated && !(await checkAuth())) { loadData(); return; }
         updateStatus("Saving...", "saving");
@@ -262,6 +281,7 @@
         }
     }
 
+    // --- UI HELPERS ---
     function updateUI(id, val) {
         const v = document.getElementById(`val-${id}`);
         const g = document.getElementById(`gauge-${id}`);
@@ -271,7 +291,7 @@
         g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
     }
 
-    function updateStatus(t, c) { const s = document.getElementById('status'); s.innerText = t; s.className = c ? 'status-'+c : ''; }
+    function updateStatus(t, c) { const s = document.getElementById('status'); s.innerText = t; s.style.color = c === 'saving' ? '#f39c12' : '#2ecc71'; }
     function startHold(id) { holdTimer = setTimeout(() => { document.getElementById(`gauge-${id}`).classList.add('unlocked'); }, 800); }
     loadData();
 </script>
