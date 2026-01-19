@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Plant Tracker Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #5d8a5d; --bg: #f0f4f0; --card: #ffffff;
+            --text: #2d3e2d; --border: #ddd; --blue: #4a90e2; --dark-blue: #357abd;
+            --gauge-red: #ff4d4d; --gauge-green: #4caf50; --gauge-blue: #2196f3;
+        }
+
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: var(--text); -webkit-tap-highlight-color: transparent; }
+        .container { max-width: 600px; margin: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 5px; position: sticky; top: 0; background: var(--bg); z-index: 100; }
+        h1 { margin: 0; font-size: 1.4rem; color: #3e5c3e; }
+        #status { font-size: 0.7rem; padding: 4px 10px; border-radius: 12px; background: #e0e0e0; font-weight: 600; text-transform: uppercase; }
+        .status-saving { background: #fff3cd !important; color: #856404 !important; }
+        .status-saved { background: #d4edda !important; color: #155724 !important; }
+
+        .plant-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; }
+        .card-top { display: grid; grid-template-columns: 80px 1fr; gap: 15px; align-items: flex-start; }
+        
+        .photo-box { width: 80px; height: 80px; border: 2px dashed #a8c6a8; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fafafa; cursor: pointer; flex-shrink: 0; }
+        .photo-box img { width: 100%; height: 100%; object-fit: cover; }
+
+        .name-gauge-container { display: flex; flex-direction: column; gap: 8px; }
+        .name-input { font-weight: bold; font-size: 1.1rem; border: none; border-bottom: 1px solid transparent; padding: 5px 0; width: 100%; outline: none; }
+        .name-input:focus { border-bottom-color: var(--primary); }
+
+        .moisture-wrap { background: #f9f9f9; padding: 8px; border-radius: 8px; border: 1px solid #eee; position: relative; }
+        .moisture-controls { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+        
+        .unlock-btn { 
+            width: 36px; height: 36px; border-radius: 50%; border: 1px solid #ccc; 
+            background: #fff; display: flex; align-items: center; justify-content: center; 
+            font-size: 1.1rem; cursor: pointer; user-select: none;
+        }
+        .unlock-btn.active { background: #ffeeba; }
+        
+        .gauge-slider { flex-grow: 1; height: 8px; border-radius: 5px; -webkit-appearance: none; appearance: none; outline: none; background: #ddd; opacity: 0.4; pointer-events: none; }
+        .gauge-slider.unlocked { opacity: 1; pointer-events: auto; }
+        .gauge-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: white; border: 2px solid #999; }
+        
+        .moisture-val { font-weight: 900; font-size: 1.1rem; min-width: 25px; text-align: center; }
+        .timestamp { font-size: 0.6rem; color: #aaa; font-style: italic; margin-top: 4px; display: block; text-align: right; }
+
+        .notes-area { width: 100%; min-height: 40px; max-height: 40px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 15px; box-sizing: border-box; transition: max-height 0.3s; resize: none; overflow: hidden; font-family: inherit; }
+        .notes-area:focus { max-height: 150px; border-color: var(--primary); outline: none; overflow-y: auto; }
+
+        .action-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 10px; }
+        .date-container { flex: 1; min-width: 140px; }
+        .date-label { font-size: 0.65rem; color: #777; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 4px; }
+        input[type="date"] { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+
+        /* HOLD TO WATER BUTTON STYLING */
+        .water-btn-wrap { position: relative; flex-shrink: 0; width: 150px; height: 45px; overflow: hidden; border-radius: 8px; background: var(--blue); }
+        .water-btn { 
+            position: relative; z-index: 2; width: 100%; height: 100%; background: transparent; 
+            color: white; border: none; font-size: 0.8rem; font-weight: bold; cursor: pointer;
+            user-select: none; -webkit-user-select: none;
+        }
+        .water-fill { 
+            position: absolute; top: 0; left: 0; height: 100%; width: 0%; 
+            background: var(--dark-blue); transition: width 1s linear; z-index: 1; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🌿 My Garden</h1>
+        <div id="status">Connecting...</div>
+    </div>
+    <div id="plant-list"></div>
+</div>
+
+<script>
+    const SUPABASE_URL = 'https://hnznwbklfoiolptvvypf.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_qIZadFFd7xDvVjxGsTnNQQ_NmuTJhPV';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const plantIds = [1, 2, 3, 4, 5, 6, 7];
+    let syncTimer, holdTimer, waterTimer;
+
+    function init() {
+        const list = document.getElementById('plant-list');
+        plantIds.forEach(id => {
+            list.innerHTML += `
+                <div class="plant-card">
+                    <div class="card-top">
+                        <div class="photo-box" onclick="document.getElementById('file-${id}').click()">
+                            <input type="file" id="file-${id}" style="display:none" accept="image/*" onchange="uploadPhoto(${id}, this)">
+                            <img id="img-${id}" style="display:none">
+                            <span id="label-${id}" style="font-size:0.6rem; font-weight:bold; color:#888;">PHOTO</span>
+                        </div>
+                        <div class="name-gauge-container">
+                            <input type="text" id="name-${id}" class="name-input" placeholder="Plant Name" oninput="queueSync()">
+                            <div class="moisture-wrap">
+                                <div class="moisture-controls">
+                                    <div class="unlock-btn" id="lock-${id}" 
+                                         onmousedown="startHold(${id})" onmouseup="endHold()" 
+                                         ontouchstart="startHold(${id})" ontouchend="endHold()">🔒</div>
+                                    <input type="range" id="gauge-${id}" class="gauge-slider" min="1" max="10" value="1" 
+                                           oninput="updateGauge(${id}, true)" onchange="lockGauge(${id})">
+                                    <span id="val-${id}" class="moisture-val">1</span>
+                                </div>
+                                <span id="time-${id}" class="timestamp">Not recorded yet</span>
+                                <input type="hidden" id="ts-hidden-${id}">
+                            </div>
+                        </div>
+                    </div>
+                    <textarea id="notes-${id}" class="notes-area" placeholder="Notes..." oninput="queueSync()"></textarea>
+                    <div class="action-row">
+                        <div class="date-container">
+                            <span class="date-label">Last Watered</span>
+                            <input type="date" id="date-${id}" onchange="queueSync()">
+                        </div>
+                        <div class="water-btn-wrap">
+                            <div id="fill-${id}" class="water-fill"></div>
+                            <button class="water-btn" 
+                                onmousedown="startWaterHold(${id})" onmouseup="cancelWaterHold(${id})"
+                                ontouchstart="startWaterHold(${id})" ontouchend="cancelWaterHold(${id})">
+                                💧 HOLD TO WATER
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        loadData();
+    }
+
+    // --- WATER HOLD LOGIC ---
+    function startWaterHold(id) {
+        const fill = document.getElementById(`fill-${id}`);
+        fill.style.width = '100%';
+        waterTimer = setTimeout(() => {
+            waterNow(id);
+            cancelWaterHold(id); // Reset UI after success
+        }, 1000); // 1 second hold
+    }
+
+    function cancelWaterHold(id) {
+        clearTimeout(waterTimer);
+        const fill = document.getElementById(`fill-${id}`);
+        fill.style.transition = 'none'; // Snap back
+        fill.style.width = '0%';
+        setTimeout(() => { fill.style.transition = 'width 1s linear'; }, 10);
+    }
+
+    // --- LOCK LOGIC ---
+    function startHold(id) {
+        const btn = document.getElementById(`lock-${id}`);
+        btn.classList.add('active');
+        holdTimer = setTimeout(() => {
+            document.getElementById(`gauge-${id}`).classList.add('unlocked');
+            btn.innerText = '🔓';
+            btn.classList.remove('active');
+        }, 800);
+    }
+
+    function endHold() {
+        clearTimeout(holdTimer);
+        document.querySelectorAll('.unlock-btn').forEach(b => b.classList.remove('active'));
+    }
+
+    function lockGauge(id) {
+        document.getElementById(`gauge-${id}`).classList.remove('unlocked');
+        document.getElementById(`lock-${id}`).innerText = '🔒';
+    }
+
+    function updateGauge(id, shouldTimestamp) {
+        const val = document.getElementById(`gauge-${id}`).value;
+        const text = document.getElementById(`val-${id}`);
+        const slider = document.getElementById(`gauge-${id}`);
+        const timeDisplay = document.getElementById(`time-${id}`);
+        const timeHidden = document.getElementById(`ts-hidden-${id}`);
+        
+        text.innerText = val;
+        let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
+        text.style.color = color;
+        slider.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
+
+        if (shouldTimestamp) {
+            const now = new Date();
+            const formatted = now.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ", " + 
+                              now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            timeDisplay.innerText = "Level set: " + formatted;
+            timeHidden.value = formatted;
+            queueSync();
+        }
+    }
+
+    function waterNow(id) {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById(`date-${id}`).value = today;
+        queueSync();
+        // Visual feedback
+        const btn = document.querySelector(`#fill-${id}`).parentElement.querySelector('.water-btn');
+        btn.innerText = "✅ WATERED";
+        setTimeout(() => { btn.innerText = "💧 HOLD TO WATER"; }, 2000);
+    }
+
+    function queueSync() {
+        updateStatus('Saving...', 'saving');
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(saveAll, 1000);
+    }
+
+    function updateStatus(text, type) {
+        const el = document.getElementById('status');
+        el.innerText = text; el.className = ''; 
+        if (type) el.classList.add('status-' + type);
+    }
+
+    async function uploadPhoto(id, input) {
+        const file = input.files[0]; if (!file) return;
+        updateStatus('Uploading...', 'saving');
+        const fileName = `plant-${id}-${Date.now()}.png`;
+        const { data, error } = await _supabase.storage.from('plant-photos').upload(fileName, file);
+        if (!error) {
+            const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
+            showPreview(id, urlData.publicUrl);
+            saveAll();
+        }
+    }
+
+    function showPreview(id, url) {
+        const img = document.getElementById(`img-${id}`);
+        const label = document.getElementById(`label-${id}`);
+        img.src = url; img.style.display = 'block'; label.style.display = 'none';
+    }
+
+    async function saveAll() {
+        try {
+            for (let id of plantIds) {
+                const rowData = {
+                    id: id,
+                    name: document.getElementById(`name-${id}`).value,
+                    watered_date: document.getElementById(`date-${id}`).value || null,
+                    notes: document.getElementById(`notes-${id}`).value,
+                    image_url: document.getElementById(`img-${id}`).src || null,
+                    moisture_level: document.getElementById(`gauge-${id}`).value,
+                    moisture_timestamp: document.getElementById(`ts-hidden-${id}`).value
+                };
+                await _supabase.from('plants').upsert(rowData);
+            }
+            updateStatus('Synced', 'saved');
+        } catch (err) { updateStatus('Error', 'saving'); }
+    }
+
+    async function loadData() {
+        const { data } = await _supabase.from('plants').select('*');
+        if (data) {
+            data.forEach(plant => {
+                const id = plant.id;
+                if (document.getElementById(`name-${id}`)) {
+                    document.getElementById(`name-${id}`).value = plant.name || '';
+                    document.getElementById(`date-${id}`).value = plant.watered_date || '';
+                    document.getElementById(`notes-${id}`).value = plant.notes || '';
+                    document.getElementById(`gauge-${id}`).value = plant.moisture_level || 1;
+                    if (plant.moisture_timestamp) {
+                        document.getElementById(`time-${id}`).innerText = "Level set: " + plant.moisture_timestamp;
+                        document.getElementById(`ts-hidden-${id}`).value = plant.moisture_timestamp;
+                    }
+                    updateGauge(id, false);
+                    if (plant.image_url && plant.image_url.startsWith('http')) {
+                        showPreview(id, plant.image_url);
+                    }
+                }
+            });
+            updateStatus('Synced', 'saved');
+        }
+    }
+    init();
+</script>
+</body>
+</html>
