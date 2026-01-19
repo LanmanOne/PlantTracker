@@ -22,7 +22,12 @@
         
         #plant-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; padding: 10px; }
         .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; position: relative; border-left: 5px solid transparent; }
-        .card-dry { border-left-color: var(--gauge-red); }
+        .card-dry { border-left-color: var(--gauge-red); background: #fff9f9; }
+
+        .card-top { display: grid; grid-template-columns: 80px 1fr; gap: 15px; align-items: flex-start; }
+        .photo-box { width: 80px; height: 80px; border: 2px dashed #a8c6a8; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fafafa; cursor: pointer; position: relative; }
+        .photo-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+        .photo-label { font-size: 0.6rem; font-weight: bold; color: #888; z-index: 1; }
 
         .moisture-wrap { background: #f9f9f9; padding: 8px; border-radius: 8px; border: 1px solid #eee; }
         .moisture-controls { display: flex; align-items: center; gap: 8px; }
@@ -36,10 +41,14 @@
         .gauge-slider.unlocked { opacity: 1; pointer-events: auto; }
 
         .badge-ai { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
+        .location-input { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #888; border: none; background: transparent; outline: none; width: 100%; font-weight: bold; }
+        .name-input { font-size: 1rem; font-weight: bold; border: none; background: transparent; outline: none; width: 100%; margin-bottom: 5px; }
 
         .water-btn-wrap { position: relative; width: 130px; height: 38px; overflow: hidden; border-radius: 8px; background: var(--blue); }
         .water-btn { position: relative; z-index: 2; width: 100%; height: 100%; background: transparent; color: white; border: none; font-size: 0.7rem; font-weight: bold; cursor: pointer; }
         .water-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: var(--dark-blue); transition: width 1s linear; z-index: 1; }
+        
+        .add-plant-btn { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 200; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -54,13 +63,15 @@
     <div id="plant-list"></div>
 </div>
 
+<button class="add-plant-btn" onclick="addNewPlant()">+ Add New Plant</button>
+
 <script>
     const SUPABASE_URL = 'https://hnznwbklfoiolptvvypf.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_qIZadFFd7xDvVjxGsTnNQQ_NmuTJhPV';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let allPlants = [];
-    let waterTimer, holdTimer;
+    let waterTimer, holdTimer, syncTimer;
 
     async function loadData() {
         const { data } = await _supabase.from('plants').select('*');
@@ -70,9 +81,7 @@
 
     function getTrend(plant) {
         if (!plant.avg_water_interval) return { icon: '', class: '' };
-        // If interval is less than 5 days, it's a "fast" dryer
         if (plant.avg_water_interval <= 5) return { icon: '↓↓', class: 'trend-fast' };
-        // If more than 10 days, it's a "slow" dryer
         if (plant.avg_water_interval >= 10) return { icon: '↓', class: 'trend-slow' };
         return { icon: '↓', class: '' };
     }
@@ -98,13 +107,23 @@
             const card = document.createElement('div');
             card.className = `plant-card ${currentLevel <= 3 ? 'card-dry' : ''}`;
             card.innerHTML = `
-                <div style="font-weight:bold; margin-bottom:5px;">${plant.name}</div>
-                <div class="moisture-wrap">
-                    <div class="moisture-controls">
-                        <div class="unlock-btn" onmousedown="startHold('${id}')" ontouchstart="startHold('${id}')">🔒</div>
-                        <input type="range" id="gauge-${id}" class="gauge-slider" min="1" max="10" value="${currentLevel}" oninput="updateUI('${id}', this.value)" onchange="manualEntry('${id}', this.value)">
-                        <span id="val-${id}" style="font-weight:bold;">${currentLevel}</span>
-                        <span class="trend-icon ${trend.class}">${trend.icon}</span>
+                <input type="text" class="location-input" value="${plant.location || 'UNSET ROOM'}" oninput="queueSync('${id}', 'location', this.value)">
+                <div class="card-top">
+                    <div class="photo-box" onclick="document.getElementById('file-${id}').click()">
+                        <input type="file" id="file-${id}" style="display:none" accept="image/*,.pdf" onchange="uploadPhoto('${id}', this)">
+                        <img id="img-${id}" src="${plant.image_url || ''}" style="${plant.image_url ? 'display:block' : 'display:none'}">
+                        <span class="photo-label" style="${plant.image_url ? 'display:none' : 'display:block'}">PHOTO</span>
+                    </div>
+                    <div>
+                        <input type="text" class="name-input" value="${plant.name}" oninput="queueSync('${id}', 'name', this.value)">
+                        <div class="moisture-wrap">
+                            <div class="moisture-controls">
+                                <div class="unlock-btn" onmousedown="startHold('${id}')" ontouchstart="startHold('${id}')">🔒</div>
+                                <input type="range" id="gauge-${id}" class="gauge-slider" min="1" max="10" value="${currentLevel}" oninput="updateUI('${id}', this.value)" onchange="manualEntry('${id}', this.value)">
+                                <span id="val-${id}" style="font-weight:bold;">${currentLevel}</span>
+                                <span class="trend-icon ${trend.class}">${trend.icon}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
@@ -120,12 +139,22 @@
         });
     }
 
+    async function uploadPhoto(id, input) {
+        const file = input.files[0];
+        if (!file) return;
+        const fileName = `${id}-${Date.now()}.png`;
+        const { data, error } = await _supabase.storage.from('plant-photos').upload(fileName, file);
+        if (!error) {
+            const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
+            const publicUrl = urlData.publicUrl;
+            await _supabase.from('plants').update({ image_url: publicUrl }).eq('id', id);
+            loadData(); // Reload to refresh the image
+        }
+    }
+
     async function manualEntry(id, val) {
         const plant = allPlants.find(p => p.id === id);
         const now = new Date().toISOString();
-        
-        // REFINING THE AI: Calculate if the current soil meter reading (val) 
-        // suggests a faster or slower dry-out than the current average.
         if (plant.watered_date) {
             const daysSinceWater = (new Date() - new Date(plant.watered_date)) / (1000 * 60 * 60 * 24);
             const pointsDropped = 10 - val;
@@ -134,17 +163,12 @@
                 plant.avg_water_interval = Math.round(((plant.avg_water_interval || impliedInterval) + impliedInterval) / 2);
             }
         }
-
-        plant.moisture_level = parseInt(val);
-        plant.moisture_timestamp = now;
-        document.getElementById(`gauge-${id}`).classList.remove('unlocked');
-        
         await _supabase.from('plants').update({ 
-            moisture_level: plant.moisture_level, 
+            moisture_level: parseInt(val), 
             moisture_timestamp: now,
             avg_water_interval: plant.avg_water_interval 
         }).eq('id', id);
-        renderAll(); // Refresh to show new Trend Icon
+        loadData();
     }
 
     async function startWater(id) {
@@ -152,18 +176,15 @@
         waterTimer = setTimeout(async () => {
             const today = new Date().toISOString().split('T')[0];
             const plant = allPlants.find(p => p.id === id);
-            
             if (plant.watered_date) {
                 const actualInterval = Math.ceil((new Date(today) - new Date(plant.watered_date)) / (1000 * 60 * 60 * 24));
                 plant.avg_water_interval = plant.avg_water_interval ? Math.round((plant.avg_water_interval + actualInterval) / 2) : actualInterval;
             }
-
             await _supabase.from('plants').update({ 
                 watered_date: today, moisture_level: 10, 
                 moisture_timestamp: new Date().toISOString(),
                 avg_water_interval: plant.avg_water_interval
             }).eq('id', id);
-            
             loadData();
         }, 1000);
     }
@@ -175,6 +196,21 @@
         let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
         v.style.color = color;
         g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
+    }
+
+    function queueSync(id, col, val) {
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(async () => {
+            await _supabase.from('plants').update({ [col]: val }).eq('id', id);
+        }, 1000);
+    }
+
+    async function addNewPlant() {
+        const n = prompt("Plant Name:");
+        if (n) {
+            await _supabase.from('plants').insert([{ name: n, moisture_level: 10, watered_date: new Date().toISOString().split('T')[0] }]);
+            loadData();
+        }
     }
 
     function startHold(id) { holdTimer = setTimeout(() => { document.getElementById(`gauge-${id}`).classList.add('unlocked'); }, 800); }
