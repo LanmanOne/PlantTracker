@@ -39,8 +39,8 @@
 
         .card-top { display: grid; grid-template-columns: 80px 1fr; gap: 15px; align-items: flex-start; }
         .photo-box { width: 80px; height: 80px; border: 2px dashed #a8c6a8; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fafafa; cursor: pointer; position: relative; }
-        .photo-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
-        .photo-label { font-size: 0.6rem; font-weight: bold; color: #888; }
+        .photo-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; pointer-events: none; }
+        .photo-label { font-size: 0.6rem; font-weight: bold; color: #888; pointer-events: none; }
 
         .moisture-wrap { background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #eee; }
         .moisture-controls { display: flex; align-items: center; gap: 12px; }
@@ -97,7 +97,6 @@
         renderAll();
     }
 
-    // --- REPAIRED LOCK LOGIC ---
     function handleLockClick() {
         if (isAuthenticated) relock(); else checkAuth();
     }
@@ -111,11 +110,9 @@
     }
 
     async function checkAuth() {
-        if (isAuthenticated) return true; // Fixes the infinite loop bug
-        
+        if (isAuthenticated) return true; 
         const pwd = prompt("Enter password:");
         if (!pwd) return false;
-        
         const { data } = await _supabase.from('app_settings').select('value').eq('key', 'admin_password').single();
         if (data && data.value === pwd) {
             isAuthenticated = true;
@@ -169,11 +166,11 @@
                     ${isAuthenticated ? `<button class="btn-delete" onclick="deletePlant('${id}')">🗑️</button>` : ''}
                 </div>
                 <div class="card-top">
-                    <div class="photo-box" onclick="triggerPhotoUpload('${id}')">
+                    <div class="photo-box" onclick="handlePhotoClick('${id}')">
                         <img src="${plant.image_url || ''}" style="${plant.image_url ? 'display:block' : 'display:none'}">
                         <span class="photo-label" style="${plant.image_url ? 'display:none' : 'display:block'}">PHOTO</span>
-                        <input type="file" id="file-${id}" style="display:none" accept="image/*" onchange="uploadPhoto('${id}', this)">
                     </div>
+                    <input type="file" id="file-${id}" style="display:none" accept="image/*,.pdf" onchange="uploadPhoto('${id}', this)">
                     <div>
                         <input type="text" class="name-input" value="${plant.name}" oninput="queueSync('${id}', 'name', this.value)">
                         <div class="moisture-wrap">
@@ -202,7 +199,15 @@
         filterList();
     }
 
-    // --- REPAIRED ACTION HANDLERS ---
+    async function handlePhotoClick(id) {
+        if (!isAuthenticated) {
+            const success = await checkAuth();
+            if (!success) return;
+        }
+        const fileInput = document.getElementById(`file-${id}`);
+        if (fileInput) fileInput.click();
+    }
+
     async function handleWaterStart(id) {
         if (!isAuthenticated) {
             const success = await checkAuth();
@@ -211,20 +216,11 @@
         startWater(id);
     }
 
-    async function triggerPhotoUpload(id) {
-        if (!isAuthenticated) {
-            const success = await checkAuth();
-            if (!success) return;
-        }
-        document.getElementById(`file-${id}`).click();
-    }
-
     async function manualEntry(id, val) {
         if (!isAuthenticated) { 
             const success = await checkAuth();
             if (!success) { loadData(); return; }
         }
-        
         const newTimestamp = new Date().toISOString();
         const intVal = parseInt(val);
         const plantIndex = allPlants.findIndex(p => p.id === id);
