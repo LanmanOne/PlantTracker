@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logan's Garden AI</title>
+    <title>Logan's Garden Vault</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -20,7 +20,6 @@
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         h1 { margin: 0; font-size: 1.6rem; color: #3e5c3e; font-weight: 800; }
         
-        /* Search and Filter UI */
         .filter-row { display: flex; gap: 10px; margin-bottom: 15px; }
         #search-bar { flex: 2; padding: 12px 15px; border-radius: 25px; border: 1px solid var(--border); font-size: 1rem; outline: none; }
         #room-filter { flex: 1; padding: 0 15px; border-radius: 25px; border: 1px solid var(--border); font-size: 0.9rem; background: white; outline: none; }
@@ -54,6 +53,8 @@
         .water-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: var(--dark-blue); transition: width 1s linear; z-index: 1; }
         
         .add-plant-btn { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 200; cursor: pointer; }
+        
+        .lock-status { font-size: 0.7rem; color: #888; margin-left: 5px; font-weight: normal; }
     </style>
 </head>
 <body>
@@ -61,14 +62,12 @@
 <div class="container">
     <div class="header">
         <div class="header-top">
-            <h1>🌿 Logan's Garden AI</h1>
+            <h1>🌿 Logan's Garden <span id="lock-label" class="lock-status">(🔒 Locked)</span></h1>
             <div id="status">Ready</div>
         </div>
         <div class="filter-row">
             <input type="text" id="search-bar" placeholder="Search plants..." oninput="filterList()">
-            <select id="room-filter" onchange="filterList()">
-                <option value="">All Rooms</option>
-            </select>
+            <select id="room-filter" onchange="filterList()"><option value="">All Rooms</option></select>
         </div>
     </div>
     <div id="plant-list"></div>
@@ -83,6 +82,7 @@
 
     let allPlants = [];
     let waterTimer, holdTimer, syncTimer;
+    let isAuthenticated = false; // Tracks session unlock
 
     async function loadData() {
         const { data } = await _supabase.from('plants').select('*');
@@ -91,24 +91,38 @@
         renderAll();
     }
 
+    // --- SECURITY LOGIC ---
+    async function checkAuth() {
+        if (isAuthenticated) return true;
+        const pwd = prompt("Enter password to unlock changes:");
+        if (!pwd) return false;
+
+        const { data } = await _supabase.from('app_settings').select('value').eq('key', 'admin_password').single();
+        
+        if (data && data.value === pwd) {
+            isAuthenticated = true;
+            document.getElementById('lock-label').innerText = "(🔓 Unlocked)";
+            document.getElementById('lock-label').style.color = "var(--primary)";
+            return true;
+        } else {
+            alert("Incorrect password.");
+            return false;
+        }
+    }
+
     function updateRoomDropdown() {
         const dropdown = document.getElementById('room-filter');
         const rooms = [...new Set(allPlants.map(p => p.location).filter(l => l))];
-        dropdown.innerHTML = '<option value="">All Rooms</option>' + 
-            rooms.map(r => `<option value="${r}">${r}</option>`).join('');
+        dropdown.innerHTML = '<option value="">All Rooms</option>' + rooms.map(r => `<option value="${r}">${r}</option>`).join('');
     }
 
     function filterList() {
         const query = document.getElementById('search-bar').value.toLowerCase();
         const room = document.getElementById('room-filter').value;
-        const cards = document.querySelectorAll('.plant-card');
-
-        cards.forEach(card => {
+        document.querySelectorAll('.plant-card').forEach(card => {
             const name = card.querySelector('.name-input').value.toLowerCase();
             const loc = card.querySelector('.location-input').value;
-            const matchesSearch = name.includes(query);
-            const matchesRoom = !room || loc === room;
-            card.style.display = (matchesSearch && matchesRoom) ? 'flex' : 'none';
+            card.style.display = (name.includes(query) && (!room || loc === room)) ? 'flex' : 'none';
         });
     }
 
@@ -121,12 +135,10 @@
 
     function calculateDynamicMoisture(plant) {
         if (!plant.watered_date) return plant.moisture_level || 5;
-        const now = new Date();
-        const lastBaseDate = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
-        const daysPassed = (now - lastBaseDate) / (1000 * 60 * 60 * 24);
+        const lastDate = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
+        const daysPassed = (new Date() - lastDate) / (1000 * 60 * 60 * 24);
         const interval = plant.avg_water_interval || 7;
-        const pointsPerDay = 10 / interval;
-        let level = (plant.moisture_level || 10) - (daysPassed * pointsPerDay);
+        let level = (plant.moisture_level || 10) - (daysPassed * (10 / interval));
         return Math.max(1, Math.min(10, Math.round(level)));
     }
 
@@ -140,11 +152,11 @@
             const card = document.createElement('div');
             card.className = `plant-card ${currentLevel <= 3 ? 'card-dry' : ''}`;
             card.innerHTML = `
-                <input type="text" class="location-input" value="${plant.location || 'UNSET ROOM'}" oninput="queueSync('${id}', 'location', this.value)">
+                <input type="text" class="location-input" value="${plant.location || 'UNSET'}" oninput="queueSync('${id}', 'location', this.value)">
                 <div class="card-top">
-                    <div class="photo-box" onclick="document.getElementById('file-${id}').click()">
+                    <div class="photo-box" onclick="triggerPhotoUpload('${id}')">
                         <input type="file" id="file-${id}" style="display:none" accept="image/*,.pdf" onchange="uploadPhoto('${id}', this)">
-                        <img id="img-${id}" src="${plant.image_url || ''}" style="${plant.image_url ? 'display:block' : 'display:none'}">
+                        <img src="${plant.image_url || ''}" style="${plant.image_url ? 'display:block' : 'display:none'}">
                         <span class="photo-label" style="${plant.image_url ? 'display:none' : 'display:block'}">PHOTO</span>
                     </div>
                     <div>
@@ -170,48 +182,56 @@
             list.appendChild(card);
             updateUI(id, currentLevel);
         });
-        filterList(); // Re-apply current filters after render
+        filterList();
+    }
+
+    async function triggerPhotoUpload(id) {
+        if (!(await checkAuth())) return;
+        document.getElementById(`file-${id}`).click();
     }
 
     async function uploadPhoto(id, input) {
         const file = input.files[0];
         if (!file) return;
+        updateStatus("Uploading...", "saving");
         const fileName = `${id}-${Date.now()}.png`;
         const { error } = await _supabase.storage.from('plant-photos').upload(fileName, file);
         if (!error) {
             const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
             await _supabase.from('plants').update({ image_url: urlData.publicUrl }).eq('id', id);
             loadData();
+            updateStatus("Photo Saved", "saved");
         }
     }
 
     async function manualEntry(id, val) {
+        if (!(await checkAuth())) { loadData(); return; }
         const plant = allPlants.find(p => p.id === id);
-        const now = new Date().toISOString();
         if (plant.watered_date) {
-            const daysSinceWater = (new Date() - new Date(plant.watered_date)) / (1000 * 60 * 60 * 24);
-            const pointsDropped = 10 - val;
-            if (pointsDropped > 0) {
-                const impliedInterval = (daysSinceWater * 10) / pointsDropped;
-                plant.avg_water_interval = Math.round(((plant.avg_water_interval || impliedInterval) + impliedInterval) / 2);
+            const days = (new Date() - new Date(plant.watered_date)) / (1000 * 60 * 60 * 24);
+            const points = 10 - val;
+            if (points > 0) {
+                const implied = (days * 10) / points;
+                plant.avg_water_interval = Math.round(((plant.avg_water_interval || implied) + implied) / 2);
             }
         }
         await _supabase.from('plants').update({ 
             moisture_level: parseInt(val), 
-            moisture_timestamp: now,
+            moisture_timestamp: new Date().toISOString(),
             avg_water_interval: plant.avg_water_interval 
         }).eq('id', id);
         loadData();
     }
 
     async function startWater(id) {
+        if (!(await checkAuth())) return;
         document.getElementById(`fill-${id}`).style.width = '100%';
         waterTimer = setTimeout(async () => {
             const today = new Date().toISOString().split('T')[0];
             const plant = allPlants.find(p => p.id === id);
             if (plant.watered_date) {
-                const actualInterval = Math.ceil((new Date(today) - new Date(plant.watered_date)) / (1000 * 60 * 60 * 24));
-                plant.avg_water_interval = plant.avg_water_interval ? Math.round((plant.avg_water_interval + actualInterval) / 2) : actualInterval;
+                const actual = Math.ceil((new Date(today) - new Date(plant.watered_date)) / (1000 * 60 * 60 * 24));
+                plant.avg_water_interval = plant.avg_water_interval ? Math.round((plant.avg_water_interval + actual) / 2) : actual;
             }
             await _supabase.from('plants').update({ 
                 watered_date: today, moisture_level: 10, 
@@ -220,6 +240,26 @@
             }).eq('id', id);
             loadData();
         }, 1000);
+    }
+
+    async function queueSync(id, col, val) {
+        if (!isAuthenticated && !(await checkAuth())) { loadData(); return; }
+        updateStatus("Saving...", "saving");
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(async () => {
+            await _supabase.from('plants').update({ [col]: val }).eq('id', id);
+            if (col === 'location') updateRoomDropdown();
+            updateStatus("Saved", "saved");
+        }, 1000);
+    }
+
+    async function addNewPlant() {
+        if (!(await checkAuth())) return;
+        const n = prompt("Plant Name:");
+        if (n) {
+            await _supabase.from('plants').insert([{ name: n, moisture_level: 10, watered_date: new Date().toISOString().split('T')[0] }]);
+            loadData();
+        }
     }
 
     function updateUI(id, val) {
@@ -231,22 +271,7 @@
         g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
     }
 
-    function queueSync(id, col, val) {
-        clearTimeout(syncTimer);
-        syncTimer = setTimeout(async () => {
-            await _supabase.from('plants').update({ [col]: val }).eq('id', id);
-            if (col === 'location') updateRoomDropdown();
-        }, 1000);
-    }
-
-    async function addNewPlant() {
-        const n = prompt("Plant Name:");
-        if (n) {
-            await _supabase.from('plants').insert([{ name: n, moisture_level: 10, watered_date: new Date().toISOString().split('T')[0] }]);
-            loadData();
-        }
-    }
-
+    function updateStatus(t, c) { const s = document.getElementById('status'); s.innerText = t; s.className = c ? 'status-'+c : ''; }
     function startHold(id) { holdTimer = setTimeout(() => { document.getElementById(`gauge-${id}`).classList.add('unlocked'); }, 800); }
     loadData();
 </script>
