@@ -171,7 +171,7 @@
             <input type="text" class="location-input" id="loc-${id}" value="${plant.location || 'UNSET ROOM'}" placeholder="ROOM..." oninput="queueSync('${id}')">
             <div class="card-top">
                 <div class="photo-box" onclick="document.getElementById('file-${id}').click()">
-                    <input type="file" id="file-${id}" style="display:none" accept="image/*" onchange="uploadPhoto('${id}', this)">
+                    <input type="file" id="file-${id}" style="display:none" accept="image/*" capture="environment" onchange="uploadPhoto('${id}', this)">
                     <img id="img-${id}" src="${plant.image_url || ''}" style="${plant.image_url ? 'block' : 'none'}">
                     <span id="label-${id}" style="font-size:0.6rem; font-weight:bold; color:#888; ${plant.image_url ? 'display:none' : ''}">PHOTO</span>
                 </div>
