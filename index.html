@@ -21,9 +21,8 @@
         
         .lock-status {
             font-size: 0.7rem; color: #888; margin-left: 8px; font-weight: normal; cursor: pointer;
-            padding: 4px 12px; border-radius: 20px; background: #e8eee8; transition: all 0.2s;
+            padding: 4px 12px; border-radius: 20px; background: #e8eee8; transition: all 0.2s; border: 1px solid transparent;
         }
-        .lock-status:hover { background: #d0dbd0; }
         .unlocked-label { color: var(--primary); font-weight: bold; background: #dcfce7; border: 1px solid #bbf7d0; }
 
         .filter-row { display: flex; gap: 10px; margin-bottom: 15px; }
@@ -98,6 +97,7 @@
         renderAll();
     }
 
+    // --- REPAIRED LOCK LOGIC ---
     function handleLockClick() {
         if (isAuthenticated) relock(); else checkAuth();
     }
@@ -111,8 +111,11 @@
     }
 
     async function checkAuth() {
+        if (isAuthenticated) return true; // Fixes the infinite loop bug
+        
         const pwd = prompt("Enter password:");
         if (!pwd) return false;
+        
         const { data } = await _supabase.from('app_settings').select('value').eq('key', 'admin_password').single();
         if (data && data.value === pwd) {
             isAuthenticated = true;
@@ -143,7 +146,6 @@
         });
     }
 
-    // Helper to calculate the current decay level
     function calculateDynamicMoisture(plant) {
         if (!plant.watered_date) return plant.moisture_level || 5;
         const lastDate = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
@@ -190,7 +192,7 @@
                     <span class="badge-ai">Cycle: ${plant.avg_water_interval || '?'}d</span>
                     <div class="water-btn-wrap">
                         <div id="fill-${id}" class="water-fill"></div>
-                        <button class="water-btn" onmousedown="startWater('${id}')" ontouchstart="startWater('${id}')">💧 HOLD TO WATER</button>
+                        <button class="water-btn" onmousedown="handleWaterStart('${id}')" ontouchstart="handleWaterStart('${id}')">💧 HOLD TO WATER</button>
                     </div>
                 </div>
             `;
@@ -200,71 +202,65 @@
         filterList();
     }
 
-    // --- UPDATED MANUAL ENTRY ---
+    // --- REPAIRED ACTION HANDLERS ---
+    async function handleWaterStart(id) {
+        if (!isAuthenticated) {
+            const success = await checkAuth();
+            if (!success) return;
+        }
+        startWater(id);
+    }
+
+    async function triggerPhotoUpload(id) {
+        if (!isAuthenticated) {
+            const success = await checkAuth();
+            if (!success) return;
+        }
+        document.getElementById(`file-${id}`).click();
+    }
+
     async function manualEntry(id, val) {
-        if (!isAuthenticated) { loadData(); return; } // Safety check
+        if (!isAuthenticated) { 
+            const success = await checkAuth();
+            if (!success) { loadData(); return; }
+        }
         
         const newTimestamp = new Date().toISOString();
         const intVal = parseInt(val);
-
-        // Update local memory immediately so it doesn't "flip back"
         const plantIndex = allPlants.findIndex(p => p.id === id);
         if (plantIndex !== -1) {
             allPlants[plantIndex].moisture_level = intVal;
             allPlants[plantIndex].moisture_timestamp = newTimestamp;
         }
-
         updateStatus("Saving...", "saving");
-        
-        const { error } = await _supabase.from('plants')
-            .update({ 
-                moisture_level: intVal, 
-                moisture_timestamp: newTimestamp 
-            })
-            .eq('id', id);
-
-        if (error) {
-            console.error("Save failed:", error);
-            updateStatus("Error!", "saving");
-        } else {
-            updateStatus("Saved", "saved");
-        }
+        await _supabase.from('plants').update({ moisture_level: intVal, moisture_timestamp: newTimestamp }).eq('id', id);
+        updateStatus("Saved", "saved");
     }
 
     async function startWater(id) {
-        if (!(await checkAuth())) return;
         document.getElementById(`fill-${id}`).style.width = '100%';
         waterTimer = setTimeout(async () => {
             const today = new Date().toISOString().split('T')[0];
             const now = new Date().toISOString();
-            
-            // Update local memory first
             const plantIndex = allPlants.findIndex(p => p.id === id);
             if (plantIndex !== -1) {
                 allPlants[plantIndex].watered_date = today;
                 allPlants[plantIndex].moisture_level = 10;
                 allPlants[plantIndex].moisture_timestamp = now;
             }
-
-            await _supabase.from('plants').update({ 
-                watered_date: today, 
-                moisture_level: 10, 
-                moisture_timestamp: now
-            }).eq('id', id);
-            
-            renderAll(); // Fast local re-render
+            await _supabase.from('plants').update({ watered_date: today, moisture_level: 10, moisture_timestamp: now }).eq('id', id);
+            renderAll();
             updateStatus("Watered!", "saved");
         }, 1000);
     }
 
-    // Standard text field sync
     async function queueSync(id, col, val) {
-        if (!isAuthenticated && !(await checkAuth())) { loadData(); return; }
-        
-        // Update local memory
+        if (!isAuthenticated) {
+            const success = await checkAuth();
+            if (!success) { loadData(); return; }
+        }
         const plantIndex = allPlants.findIndex(p => p.id === id);
         if (plantIndex !== -1) allPlants[plantIndex][col] = val;
-
         updateStatus("Saving...", "saving");
         clearTimeout(syncTimer);
         syncTimer = setTimeout(async () => {
@@ -281,11 +277,6 @@
         renderAll();
     }
 
-    async function triggerPhotoUpload(id) {
-        if (!(await checkAuth())) return;
-        document.getElementById(`file-${id}`).click();
-    }
-
     async function uploadPhoto(id, input) {
         const file = input.files[0];
         if (!file) return;
@@ -293,29 +284,22 @@
         const fileName = `${id}-${Date.now()}.png`;
         await _supabase.storage.from('plant-photos').upload(fileName, file);
         const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
-        
         await _supabase.from('plants').update({ image_url: urlData.publicUrl }).eq('id', id);
-        
         const plantIndex = allPlants.findIndex(p => p.id === id);
         if (plantIndex !== -1) allPlants[plantIndex].image_url = urlData.publicUrl;
-        
         renderAll();
         updateStatus("Photo Saved", "saved");
     }
 
     async function addNewPlant() {
-        if (!(await checkAuth())) return;
+        if (!isAuthenticated) {
+            const success = await checkAuth();
+            if (!success) return;
+        }
         const n = prompt("Plant Name:");
         if (n) {
-            const { data } = await _supabase.from('plants').insert([{ 
-                name: n, 
-                moisture_level: 10, 
-                watered_date: new Date().toISOString().split('T')[0] 
-            }]).select();
-            if (data) {
-                allPlants.push(data[0]);
-                renderAll();
-            }
+            const { data } = await _supabase.from('plants').insert([{ name: n, moisture_level: 10, watered_date: new Date().toISOString().split('T')[0] }]).select();
+            if (data) { allPlants.push(data[0]); renderAll(); }
         }
     }
 
