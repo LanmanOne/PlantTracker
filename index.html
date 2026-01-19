@@ -79,7 +79,7 @@
         </div>
         <div class="stats-row">
             <div class="stat-pill">Plants: <span id="stat-total">0</span></div>
-            <div id="vacation-btn" class="stat-pill" onclick="toggleVacation()"✈️ Vacation Mode</div>
+            <div id="vacation-btn" class="stat-pill" onclick="toggleVacation()">✈️ Vacation Mode</div>
         </div>
         <div class="search-row">
             <input type="text" id="search-bar" placeholder="Search plants..." oninput="filterList()">
@@ -142,6 +142,12 @@
         sorted.forEach(plant => renderPlantCard(plant));
     }
 
+    function calculateDays(dateStr) {
+        if (!dateStr) return "Never watered";
+        const diff = Math.floor((new Date() - new Date(dateStr)) / (1000 * 60 * 60 * 24));
+        return diff === 0 ? "Watered today" : `Watered ${diff}d ago`;
+    }
+
     function getPrediction(plant) {
         if (!plant.watered_date || !plant.avg_water_interval) return null;
         const last = new Date(plant.watered_date);
@@ -171,8 +177,8 @@
             <input type="text" class="location-input" id="loc-${id}" value="${plant.location || 'UNSET ROOM'}" placeholder="ROOM..." oninput="queueSync('${id}')">
             <div class="card-top">
                 <div class="photo-box" onclick="document.getElementById('file-${id}').click()">
-                    <input type="file" id="file-${id}" style="display:none" accept="image/*" capture="environment" onchange="uploadPhoto('${id}', this)">
-                    <img id="img-${id}" src="${plant.image_url || ''}" style="${plant.image_url ? 'block' : 'none'}">
+                    <input type="file" id="file-${id}" style="display:none" accept="image/*" onchange="uploadPhoto('${id}', this)">
+                    <img id="img-${id}" src="${plant.image_url || ''}" style="${plant.image_url ? 'display:block' : 'display:none'}">
                     <span id="label-${id}" style="font-size:0.6rem; font-weight:bold; color:#888; ${plant.image_url ? 'display:none' : ''}">PHOTO</span>
                 </div>
                 <div class="name-gauge-container">
@@ -204,20 +210,60 @@
         updateGauge(id, false);
     }
 
-    function calculateDays(dateStr) {
-        if (!dateStr) return "Never watered";
-        const diff = Math.floor((new Date() - new Date(dateStr)) / (1000 * 60 * 60 * 24));
-        return diff === 0 ? "Watered today" : `Watered ${diff}d ago`;
+    async function uploadPhoto(id, input) {
+        const file = input.files[0]; 
+        if (!file) return;
+        updateStatus('Uploading...', 'saving');
+        
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${id}-${Date.now()}.${fileExt}`;
+
+        try {
+            const { data: uploadData, error: uploadError } = await _supabase.storage
+                .from('plant-photos')
+                .upload(fileName, file);
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
+            const publicUrl = urlData.publicUrl;
+
+            // Update UI
+            document.getElementById(`img-${id}`).src = publicUrl;
+            document.getElementById(`img-${id}`).style.display = 'block';
+            document.getElementById(`label-${id}`).style.display = 'none';
+
+            // SAVE TO DB IMMEDIATELY
+            await _supabase.from('plants').update({ image_url: publicUrl }).eq('id', id);
+            
+            const plant = allPlants.find(p => p.id === id);
+            if (plant) plant.image_url = publicUrl;
+            
+            updateStatus('Photo Saved', 'saved');
+        } catch (err) {
+            alert("Upload failed: " + err.message);
+            updateStatus('Error', 'saving');
+        }
     }
 
     async function savePlant(id) {
         const plant = allPlants.find(p => p.id === id);
+        const newMoisture = parseInt(document.getElementById(`gauge-${id}`).value);
+        
+        let history = plant.moisture_history || "";
+        if (newMoisture !== plant.moisture_level) {
+            let parts = history.split(',').filter(x => x);
+            parts.push(newMoisture);
+            if (parts.length > 5) parts.shift();
+            history = parts.join(',');
+        }
+
         const rowData = {
             name: document.getElementById(`name-${id}`).value,
             location: document.getElementById(`loc-${id}`).value,
             watered_date: document.getElementById(`date-${id}`).value || null,
             notes: document.getElementById(`notes-${id}`).value,
-            moisture_level: parseInt(document.getElementById(`gauge-${id}`).value)
+            moisture_level: newMoisture,
+            moisture_history: history
         };
         await _supabase.from('plants').update(rowData).eq('id', id);
         Object.assign(plant, rowData);
@@ -243,9 +289,7 @@
         document.querySelectorAll('.plant-card').forEach(c => {
             const name = c.querySelector('.name-input').value.toLowerCase();
             const loc = c.querySelector('.location-input').value.toLowerCase();
-            const matchesQuery = name.includes(q);
-            const matchesRoom = !room || loc === room;
-            c.style.display = (matchesQuery && matchesRoom) ? 'flex' : 'none';
+            c.style.display = (name.includes(q) && (!room || loc === room)) ? 'flex' : 'none';
         });
     }
 
@@ -272,17 +316,7 @@
         if(data) { allPlants.push(data[0]); renderAll(); updateStats(); updateRoomFilter(); }
     }
     async function deletePlant(id, n) { if(confirm(`Delete ${n}?`)) { await _supabase.from('plants').delete().eq('id', id); allPlants = allPlants.filter(p => p.id !== id); renderAll(); updateStats(); } }
-    async function uploadPhoto(id, input) {
-        const file = input.files[0]; if (!file) return;
-        const fileName = `plant-${id}-${Date.now()}.png`;
-        const { data, error } = await _supabase.storage.from('plant-photos').upload(fileName, file);
-        if (!error) {
-            const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
-            document.getElementById(`img-${id}`).src = urlData.publicUrl;
-            document.getElementById(`img-${id}`).style.display = 'block';
-            savePlant(id);
-        }
-    }
+    
     loadData();
 </script>
 </body>
