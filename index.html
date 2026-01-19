@@ -20,6 +20,11 @@
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         h1 { margin: 0; font-size: 1.6rem; color: #3e5c3e; font-weight: 800; }
         
+        /* Search and Filter UI */
+        .filter-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        #search-bar { flex: 2; padding: 12px 15px; border-radius: 25px; border: 1px solid var(--border); font-size: 1rem; outline: none; }
+        #room-filter { flex: 1; padding: 0 15px; border-radius: 25px; border: 1px solid var(--border); font-size: 0.9rem; background: white; outline: none; }
+
         #plant-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; padding: 10px; }
         .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; position: relative; border-left: 5px solid transparent; }
         .card-dry { border-left-color: var(--gauge-red); background: #fff9f9; }
@@ -59,6 +64,12 @@
             <h1>🌿 Logan's Garden AI</h1>
             <div id="status">Ready</div>
         </div>
+        <div class="filter-row">
+            <input type="text" id="search-bar" placeholder="Search plants..." oninput="filterList()">
+            <select id="room-filter" onchange="filterList()">
+                <option value="">All Rooms</option>
+            </select>
+        </div>
     </div>
     <div id="plant-list"></div>
 </div>
@@ -76,7 +87,29 @@
     async function loadData() {
         const { data } = await _supabase.from('plants').select('*');
         allPlants = data || [];
+        updateRoomDropdown();
         renderAll();
+    }
+
+    function updateRoomDropdown() {
+        const dropdown = document.getElementById('room-filter');
+        const rooms = [...new Set(allPlants.map(p => p.location).filter(l => l))];
+        dropdown.innerHTML = '<option value="">All Rooms</option>' + 
+            rooms.map(r => `<option value="${r}">${r}</option>`).join('');
+    }
+
+    function filterList() {
+        const query = document.getElementById('search-bar').value.toLowerCase();
+        const room = document.getElementById('room-filter').value;
+        const cards = document.querySelectorAll('.plant-card');
+
+        cards.forEach(card => {
+            const name = card.querySelector('.name-input').value.toLowerCase();
+            const loc = card.querySelector('.location-input').value;
+            const matchesSearch = name.includes(query);
+            const matchesRoom = !room || loc === room;
+            card.style.display = (matchesSearch && matchesRoom) ? 'flex' : 'none';
+        });
     }
 
     function getTrend(plant) {
@@ -137,18 +170,18 @@
             list.appendChild(card);
             updateUI(id, currentLevel);
         });
+        filterList(); // Re-apply current filters after render
     }
 
     async function uploadPhoto(id, input) {
         const file = input.files[0];
         if (!file) return;
         const fileName = `${id}-${Date.now()}.png`;
-        const { data, error } = await _supabase.storage.from('plant-photos').upload(fileName, file);
+        const { error } = await _supabase.storage.from('plant-photos').upload(fileName, file);
         if (!error) {
             const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
-            const publicUrl = urlData.publicUrl;
-            await _supabase.from('plants').update({ image_url: publicUrl }).eq('id', id);
-            loadData(); // Reload to refresh the image
+            await _supabase.from('plants').update({ image_url: urlData.publicUrl }).eq('id', id);
+            loadData();
         }
     }
 
@@ -202,6 +235,7 @@
         clearTimeout(syncTimer);
         syncTimer = setTimeout(async () => {
             await _supabase.from('plants').update({ [col]: val }).eq('id', id);
+            if (col === 'location') updateRoomDropdown();
         }, 1000);
     }
 
