@@ -20,20 +20,12 @@
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         h1 { margin: 0; font-size: 1.6rem; color: #3e5c3e; font-weight: 800; }
         
-        /* Interactive Lock Label */
         .lock-status {
-            font-size: 0.7rem;
-            color: #888;
-            margin-left: 8px;
-            font-weight: normal;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 20px;
-            background: #e8eee8;
-            transition: all 0.2s;
+            font-size: 0.7rem; color: #888; margin-left: 8px; font-weight: normal; cursor: pointer;
+            padding: 4px 12px; border-radius: 20px; background: #e8eee8; transition: all 0.2s;
         }
         .lock-status:hover { background: #d0dbd0; }
-        .unlocked-label { color: var(--primary); font-weight: bold; background: #dcfce7; }
+        .unlocked-label { color: var(--primary); font-weight: bold; background: #dcfce7; border: 1px solid #bbf7d0; }
 
         .filter-row { display: flex; gap: 10px; margin-bottom: 15px; }
         #search-bar { flex: 2; padding: 12px 15px; border-radius: 25px; border: 1px solid var(--border); font-size: 1rem; outline: none; }
@@ -45,23 +37,26 @@
 
         .card-header { display: flex; justify-content: space-between; align-items: center; }
         .location-input { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #888; border: none; background: transparent; outline: none; font-weight: bold; flex: 1; }
-        .btn-delete { background: none; border: none; cursor: pointer; font-size: 1.1rem; color: #ccc; transition: color 0.2s; }
-        .btn-delete:hover { color: var(--gauge-red); }
+        .btn-delete { background: none; border: none; cursor: pointer; font-size: 1.1rem; color: #ccc; }
 
         .card-top { display: grid; grid-template-columns: 80px 1fr; gap: 15px; align-items: flex-start; }
         .photo-box { width: 80px; height: 80px; border: 2px dashed #a8c6a8; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fafafa; cursor: pointer; position: relative; }
         .photo-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
-        .photo-label { font-size: 0.6rem; font-weight: bold; color: #888; z-index: 1; }
+        .photo-label { font-size: 0.6rem; font-weight: bold; color: #888; }
 
-        .moisture-wrap { background: #f9f9f9; padding: 8px; border-radius: 8px; border: 1px solid #eee; }
-        .moisture-controls { display: flex; align-items: center; gap: 8px; }
-        .unlock-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid #ccc; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .moisture-wrap { background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #eee; }
+        .moisture-controls { display: flex; align-items: center; gap: 12px; }
         
-        .gauge-slider { flex-grow: 1; height: 8px; border-radius: 5px; -webkit-appearance: none; appearance: none; background: #ddd; opacity: 0.4; pointer-events: none; }
-        .gauge-slider.unlocked { opacity: 1; pointer-events: auto; }
+        /* Redesigned Slider - No more Lock Icon */
+        .gauge-slider { 
+            flex-grow: 1; height: 10px; border-radius: 5px; -webkit-appearance: none; appearance: none; 
+            background: #ddd; transition: opacity 0.3s;
+        }
+        .gauge-slider.locked-mode { opacity: 0.3; pointer-events: none; }
+        .gauge-slider.unlocked-mode { opacity: 1; pointer-events: auto; cursor: pointer; }
 
         .badge-ai { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
-        .name-input { font-size: 1rem; font-weight: bold; border: none; background: transparent; outline: none; width: 100%; margin-bottom: 5px; }
+        .name-input { font-size: 1.1rem; font-weight: bold; border: none; background: transparent; outline: none; width: 100%; margin-bottom: 5px; }
 
         .water-btn-wrap { position: relative; width: 130px; height: 38px; overflow: hidden; border-radius: 8px; background: var(--blue); }
         .water-btn { position: relative; z-index: 2; width: 100%; height: 100%; background: transparent; color: white; border: none; font-size: 0.7rem; font-weight: bold; cursor: pointer; }
@@ -76,7 +71,7 @@
 <div class="container">
     <div class="header">
         <div class="header-top">
-            <h1>🌿 Logan's Garden <span id="lock-label" class="lock-status" onclick="handleLockClick()">(🔒 Locked)</span></h1>
+            <h1>🌿 Garden <span id="lock-label" class="lock-status" onclick="handleLockClick()">🔒 Tap to Unlock</span></h1>
             <div id="status">Ready</div>
         </div>
         <div class="filter-row">
@@ -95,7 +90,7 @@
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let allPlants = [];
-    let waterTimer, holdTimer, syncTimer;
+    let waterTimer, syncTimer;
     let isAuthenticated = false; 
 
     async function loadData() {
@@ -105,46 +100,35 @@
         renderAll();
     }
 
-    // --- NEW LOCK LOGIC ---
     function handleLockClick() {
-        if (isAuthenticated) {
-            relock();
-        } else {
-            checkAuth();
-        }
+        if (isAuthenticated) relock(); else checkAuth();
     }
 
     function relock() {
         isAuthenticated = false;
         const label = document.getElementById('lock-label');
-        label.innerText = "(🔒 Locked)";
+        label.innerText = "🔒 Tap to Unlock";
         label.classList.remove('unlocked-label');
-        updateStatus("Vault Locked", "saved");
         renderAll();
     }
 
     async function checkAuth() {
-        if (isAuthenticated) return true;
-        const pwd = prompt("Enter password to unlock:");
+        const pwd = prompt("Enter password:");
         if (!pwd) return false;
-
         const { data } = await _supabase.from('app_settings').select('value').eq('key', 'admin_password').single();
-        
         if (data && data.value === pwd) {
             isAuthenticated = true;
             const label = document.getElementById('lock-label');
-            label.innerText = "(🔓 Unlocked - Tap to Lock)";
+            label.innerText = "🔓 Unlocked (Lock)";
             label.classList.add('unlocked-label');
-            updateStatus("Vault Unlocked", "saved");
             renderAll();
             return true;
         } else {
-            alert("Incorrect password.");
+            alert("Wrong password.");
             return false;
         }
     }
 
-    // --- UI & RENDERING ---
     function updateRoomDropdown() {
         const dropdown = document.getElementById('room-filter');
         const rooms = [...new Set(allPlants.map(p => p.location).filter(l => l))];
@@ -185,23 +169,26 @@
                 </div>
                 <div class="card-top">
                     <div class="photo-box" onclick="triggerPhotoUpload('${id}')">
-                        <input type="file" id="file-${id}" style="display:none" accept="image/*" onchange="uploadPhoto('${id}', this)">
                         <img src="${plant.image_url || ''}" style="${plant.image_url ? 'display:block' : 'display:none'}">
                         <span class="photo-label" style="${plant.image_url ? 'display:none' : 'display:block'}">PHOTO</span>
+                        <input type="file" id="file-${id}" style="display:none" accept="image/*" onchange="uploadPhoto('${id}', this)">
                     </div>
                     <div>
                         <input type="text" class="name-input" value="${plant.name}" oninput="queueSync('${id}', 'name', this.value)">
                         <div class="moisture-wrap">
                             <div class="moisture-controls">
-                                <div class="unlock-btn" onmousedown="startHold('${id}')" ontouchstart="startHold('${id}')">🔒</div>
-                                <input type="range" id="gauge-${id}" class="gauge-slider ${isAuthenticated ? 'unlocked' : ''}" min="1" max="10" value="${currentLevel}" oninput="updateUI('${id}', this.value)" onchange="manualEntry('${id}', this.value)">
-                                <span id="val-${id}" style="font-weight:bold;">${currentLevel}</span>
+                                <input type="range" id="gauge-${id}" 
+                                    class="gauge-slider ${isAuthenticated ? 'unlocked-mode' : 'locked-mode'}" 
+                                    min="1" max="10" value="${currentLevel}" 
+                                    oninput="updateUI('${id}', this.value)" 
+                                    onchange="manualEntry('${id}', this.value)">
+                                <span id="val-${id}" style="font-weight:bold; min-width: 20px;">${currentLevel}</span>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-                    <span class="badge-ai">AI Cycle: ${plant.avg_water_interval || '?'} days</span>
+                    <span class="badge-ai">Cycle: ${plant.avg_water_interval || '?'}d</span>
                     <div class="water-btn-wrap">
                         <div id="fill-${id}" class="water-fill"></div>
                         <button class="water-btn" onmousedown="startWater('${id}')" ontouchstart="startWater('${id}')">💧 HOLD TO WATER</button>
@@ -214,10 +201,8 @@
         filterList();
     }
 
-    // --- ACTIONS ---
     async function deletePlant(id) {
-        if (!(await checkAuth())) return;
-        if (!confirm("Permanently remove this plant?")) return;
+        if (!confirm("Permanently remove?")) return;
         await _supabase.from('plants').delete().eq('id', id);
         loadData();
     }
@@ -236,11 +221,10 @@
         const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
         await _supabase.from('plants').update({ image_url: urlData.publicUrl }).eq('id', id);
         loadData();
-        updateStatus("Photo Saved", "saved");
     }
 
     async function manualEntry(id, val) {
-        if (!(await checkAuth())) { loadData(); return; }
+        if (!isAuthenticated && !(await checkAuth())) { loadData(); return; }
         await _supabase.from('plants').update({ 
             moisture_level: parseInt(val), 
             moisture_timestamp: new Date().toISOString() 
@@ -284,14 +268,19 @@
     function updateUI(id, val) {
         const v = document.getElementById(`val-${id}`);
         const g = document.getElementById(`gauge-${id}`);
+        if(!v || !g) return;
         v.innerText = val;
         let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
         v.style.color = color;
         g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
     }
 
-    function updateStatus(t, c) { const s = document.getElementById('status'); s.innerText = t; s.style.color = c === 'saving' ? '#f39c12' : '#2ecc71'; }
-    function startHold(id) { holdTimer = setTimeout(() => { document.getElementById(`gauge-${id}`).classList.add('unlocked'); }, 800); }
+    function updateStatus(t, c) { 
+        const s = document.getElementById('status'); 
+        s.innerText = t; 
+        s.style.color = c === 'saving' ? '#f39c12' : '#2ecc71'; 
+    }
+
     loadData();
 </script>
 </body>
