@@ -115,13 +115,8 @@
     function toggleSort() {
         sortByThirst = !sortByThirst;
         const btn = document.getElementById('sort-thirst-btn');
-        if (sortByThirst) {
-            btn.innerText = "🔥 Sort: Thirstiest First";
-            btn.classList.add('sort-active');
-        } else {
-            btn.innerText = "📊 Sort: Alphabetical";
-            btn.classList.remove('sort-active');
-        }
+        btn.innerText = sortByThirst ? "🔥 Sort: Thirstiest First" : "📊 Sort: Alphabetical";
+        btn.classList.toggle('sort-active', sortByThirst);
         renderAll();
     }
 
@@ -157,10 +152,10 @@
         if (!plant.watered_date || observedLevel >= 10) return null;
         const lastWatered = new Date(plant.watered_date);
         const daysPassed = (new Date() - lastWatered) / (1000 * 60 * 60 * 24);
-        if (daysPassed < 0.5) return null;
+        if (daysPassed < 0.2) return null; // Wait at least 5 hours
         const calculated = (daysPassed * 10) / (10 - observedLevel);
         const currentInterval = plant.avg_water_interval || 7;
-        const learned = (currentInterval * 0.8) + (calculated * 0.2);
+        const learned = (currentInterval * 0.7) + (calculated * 0.3); // Aggressive learning
         return Math.round(learned * 10) / 10;
     }
 
@@ -183,15 +178,12 @@
     function renderAll() {
         const list = document.getElementById('plant-list');
         list.innerHTML = '';
-
-        // Sorting Logic
         let displayPlants = [...allPlants];
         if (sortByThirst) {
             displayPlants.sort((a, b) => {
                 const moistA = calculateDynamicMoisture(a);
                 const moistB = calculateDynamicMoisture(b);
                 if (moistA !== moistB) return moistA - moistB;
-                // If moisture is same, oldest watered date first
                 return new Date(a.watered_date || 0) - new Date(b.watered_date || 0);
             });
         } else {
@@ -246,6 +238,41 @@
         filterList();
     }
 
+    async function manualEntry(id, val) {
+        if (!isAuthenticated) { if (!await checkAuth()) { loadData(); return; } }
+        const intVal = parseInt(val);
+        const now = new Date().toISOString();
+        const plantIndex = allPlants.findIndex(p => p.id === id);
+        const plant = allPlants[plantIndex];
+
+        // 1. Calculate and update LOCAL state immediately
+        const learnedInterval = calculateNewInterval(plant, intVal);
+        plant.moisture_level = intVal;
+        plant.moisture_timestamp = now;
+        if (learnedInterval) plant.avg_water_interval = learnedInterval;
+
+        // 2. Prepare database payload
+        const updateData = { 
+            moisture_level: intVal, 
+            moisture_timestamp: now 
+        };
+        if (learnedInterval) updateData.avg_water_interval = learnedInterval;
+
+        updateStatus("Syncing...", "saving");
+        
+        // 3. Save to database
+        const { error } = await _supabase.from('plants').update(updateData).eq('id', id);
+        
+        if (error) {
+            alert("Save failed! Reverting...");
+            await loadData();
+        } else {
+            // 4. Final render only after confirmation
+            renderAll();
+            updateStatus("Saved", "saved");
+        }
+    }
+
     async function handlePhotoClick(id) {
         if (!isAuthenticated) { if (!await checkAuth()) return; }
         document.getElementById(`file-${id}`).click();
@@ -256,33 +283,19 @@
         startWater(id);
     }
 
-    async function manualEntry(id, val) {
-        if (!isAuthenticated) { if (!await checkAuth()) { loadData(); return; } }
-        const intVal = parseInt(val);
-        const plantIndex = allPlants.findIndex(p => p.id === id);
-        const plant = allPlants[plantIndex];
-        const learnedInterval = calculateNewInterval(plant, intVal);
-        const updateData = { moisture_level: intVal, moisture_timestamp: new Date().toISOString() };
-        if (learnedInterval) { updateData.avg_water_interval = learnedInterval; plant.avg_water_interval = learnedInterval; }
-        plant.moisture_level = intVal;
-        plant.moisture_timestamp = updateData.moisture_timestamp;
-        updateStatus(learnedInterval ? "Learning Cycle..." : "Saving...", "saving");
-        await _supabase.from('plants').update(updateData).eq('id', id);
-        renderAll();
-        updateStatus("Saved", "saved");
-    }
-
     async function startWater(id) {
         document.getElementById(`fill-${id}`).style.width = '100%';
         waterTimer = setTimeout(async () => {
             const today = new Date().toISOString().split('T')[0];
             const now = new Date().toISOString();
             const plantIndex = allPlants.findIndex(p => p.id === id);
+            
             if (plantIndex !== -1) {
                 allPlants[plantIndex].watered_date = today;
                 allPlants[plantIndex].moisture_level = 10;
                 allPlants[plantIndex].moisture_timestamp = now;
             }
+            
             await _supabase.from('plants').update({ watered_date: today, moisture_level: 10, moisture_timestamp: now }).eq('id', id);
             renderAll();
             updateStatus("Watered!", "saved");
