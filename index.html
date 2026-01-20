@@ -52,7 +52,10 @@
         .gauge-slider.locked-mode { opacity: 0.3; pointer-events: none; }
         .gauge-slider.unlocked-mode { opacity: 1; pointer-events: auto; cursor: pointer; }
 
+        .badge-row { display: flex; gap: 8px; align-items: center; }
         .badge-ai { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
+        .badge-days { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
+        
         .name-input { font-size: 1.1rem; font-weight: bold; border: none; background: transparent; outline: none; width: 100%; margin-bottom: 5px; }
 
         .water-btn-wrap { position: relative; width: 130px; height: 38px; overflow: hidden; border-radius: 8px; background: var(--blue); }
@@ -143,6 +146,13 @@
         });
     }
 
+    function calculateDaysSince(dateStr) {
+        if (!dateStr) return "Never";
+        const diff = new Date() - new Date(dateStr);
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        return days === 0 ? "Today" : `${days}d ago`;
+    }
+
     function calculateDynamicMoisture(plant) {
         if (!plant.watered_date) return plant.moisture_level || 5;
         const lastDate = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
@@ -158,6 +168,7 @@
         allPlants.forEach(plant => {
             const id = plant.id;
             const currentLevel = calculateDynamicMoisture(plant);
+            const daysAgo = calculateDaysSince(plant.watered_date);
             const card = document.createElement('div');
             card.className = `plant-card ${currentLevel <= 3 ? 'card-dry' : ''}`;
             card.innerHTML = `
@@ -186,7 +197,10 @@
                     </div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-                    <span class="badge-ai">Cycle: ${plant.avg_water_interval || '?'}d</span>
+                    <div class="badge-row">
+                        <span class="badge-ai">Cycle: ${plant.avg_water_interval || '?'}d</span>
+                        <span class="badge-days">💧 ${daysAgo}</span>
+                    </div>
                     <div class="water-btn-wrap">
                         <div id="fill-${id}" class="water-fill"></div>
                         <button class="water-btn" onmousedown="handleWaterStart('${id}')" ontouchstart="handleWaterStart('${id}')">💧 HOLD TO WATER</button>
@@ -200,27 +214,18 @@
     }
 
     async function handlePhotoClick(id) {
-        if (!isAuthenticated) {
-            const success = await checkAuth();
-            if (!success) return;
-        }
+        if (!isAuthenticated) { const success = await checkAuth(); if (!success) return; }
         const fileInput = document.getElementById(`file-${id}`);
         if (fileInput) fileInput.click();
     }
 
     async function handleWaterStart(id) {
-        if (!isAuthenticated) {
-            const success = await checkAuth();
-            if (!success) return;
-        }
+        if (!isAuthenticated) { const success = await checkAuth(); if (!success) return; }
         startWater(id);
     }
 
     async function manualEntry(id, val) {
-        if (!isAuthenticated) { 
-            const success = await checkAuth();
-            if (!success) { loadData(); return; }
-        }
+        if (!isAuthenticated) { const success = await checkAuth(); if (!success) { loadData(); return; } }
         const newTimestamp = new Date().toISOString();
         const intVal = parseInt(val);
         const plantIndex = allPlants.findIndex(p => p.id === id);
@@ -251,10 +256,7 @@
     }
 
     async function queueSync(id, col, val) {
-        if (!isAuthenticated) {
-            const success = await checkAuth();
-            if (!success) { loadData(); return; }
-        }
+        if (!isAuthenticated) { const success = await checkAuth(); if (!success) { loadData(); return; } }
         const plantIndex = allPlants.findIndex(p => p.id === id);
         if (plantIndex !== -1) allPlants[plantIndex][col] = val;
         updateStatus("Saving...", "saving");
@@ -288,10 +290,7 @@
     }
 
     async function addNewPlant() {
-        if (!isAuthenticated) {
-            const success = await checkAuth();
-            if (!success) return;
-        }
+        if (!isAuthenticated) { const success = await checkAuth(); if (!success) return; }
         const n = prompt("Plant Name:");
         if (n) {
             const { data } = await _supabase.from('plants').insert([{ name: n, moisture_level: 10, watered_date: new Date().toISOString().split('T')[0] }]).select();
