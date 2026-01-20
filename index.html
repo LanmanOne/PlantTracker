@@ -106,7 +106,8 @@
     let sortByThirst = false;
 
     async function loadData() {
-        const { data } = await _supabase.from('plants').select('*');
+        const { data, error } = await _supabase.from('plants').select('*');
+        if (error) console.error("Load error:", error);
         allPlants = data || [];
         updateRoomDropdown();
         renderAll();
@@ -152,10 +153,10 @@
         if (!plant.watered_date || observedLevel >= 10) return null;
         const lastWatered = new Date(plant.watered_date);
         const daysPassed = (new Date() - lastWatered) / (1000 * 60 * 60 * 24);
-        if (daysPassed < 0.2) return null; // Wait at least 5 hours
+        if (daysPassed < 0.2) return null; 
         const calculated = (daysPassed * 10) / (10 - observedLevel);
         const currentInterval = plant.avg_water_interval || 7;
-        const learned = (currentInterval * 0.7) + (calculated * 0.3); // Aggressive learning
+        const learned = (currentInterval * 0.7) + (calculated * 0.3);
         return Math.round(learned * 10) / 10;
     }
 
@@ -238,6 +239,7 @@
         filterList();
     }
 
+    // --- DEBUG ENABLED ENTRY ---
     async function manualEntry(id, val) {
         if (!isAuthenticated) { if (!await checkAuth()) { loadData(); return; } }
         const intVal = parseInt(val);
@@ -245,13 +247,7 @@
         const plantIndex = allPlants.findIndex(p => p.id === id);
         const plant = allPlants[plantIndex];
 
-        // 1. Calculate and update LOCAL state immediately
         const learnedInterval = calculateNewInterval(plant, intVal);
-        plant.moisture_level = intVal;
-        plant.moisture_timestamp = now;
-        if (learnedInterval) plant.avg_water_interval = learnedInterval;
-
-        // 2. Prepare database payload
         const updateData = { 
             moisture_level: intVal, 
             moisture_timestamp: now 
@@ -260,14 +256,17 @@
 
         updateStatus("Syncing...", "saving");
         
-        // 3. Save to database
         const { error } = await _supabase.from('plants').update(updateData).eq('id', id);
         
         if (error) {
-            alert("Save failed! Reverting...");
-            await loadData();
+            // IF THIS FAILS, READ THE ALERT CAREFULLY:
+            alert("SAVE ERROR: " + error.message + "\n\nHint: " + error.hint);
+            updateStatus("Failed", "red");
+            await loadData(); // Revert to DB state
         } else {
-            // 4. Final render only after confirmation
+            plant.moisture_level = intVal;
+            plant.moisture_timestamp = now;
+            if (learnedInterval) plant.avg_water_interval = learnedInterval;
             renderAll();
             updateStatus("Saved", "saved");
         }
@@ -296,7 +295,9 @@
                 allPlants[plantIndex].moisture_timestamp = now;
             }
             
-            await _supabase.from('plants').update({ watered_date: today, moisture_level: 10, moisture_timestamp: now }).eq('id', id);
+            const { error } = await _supabase.from('plants').update({ watered_date: today, moisture_level: 10, moisture_timestamp: now }).eq('id', id);
+            if(error) alert("Water Error: " + error.message);
+            
             renderAll();
             updateStatus("Watered!", "saved");
         }, 1000);
@@ -309,7 +310,8 @@
         updateStatus("Saving...", "saving");
         clearTimeout(syncTimer);
         syncTimer = setTimeout(async () => {
-            await _supabase.from('plants').update({ [col]: val }).eq('id', id);
+            const { error } = await _supabase.from('plants').update({ [col]: val }).eq('id', id);
+            if (error) alert("Sync Error: " + error.message);
             if (col === 'location') updateRoomDropdown();
             updateStatus("Saved", "saved");
         }, 800);
@@ -340,7 +342,8 @@
         if (!isAuthenticated) { if (!await checkAuth()) return; }
         const n = prompt("Plant Name:");
         if (n) {
-            const { data } = await _supabase.from('plants').insert([{ name: n, moisture_level: 10, watered_date: new Date().toISOString().split('T')[0], avg_water_interval: 7 }]).select();
+            const { data, error } = await _supabase.from('plants').insert([{ name: n, moisture_level: 10, watered_date: new Date().toISOString().split('T')[0], avg_water_interval: 7 }]).select();
+            if (error) alert("Add Error: " + error.message);
             if (data) { allPlants.push(data[0]); renderAll(); }
         }
     }
@@ -374,7 +377,7 @@
     function updateStatus(t, c) { 
         const s = document.getElementById('status'); 
         s.innerText = t; 
-        s.style.color = c === 'saving' ? '#f39c12' : '#2ecc71'; 
+        s.style.color = c === 'saving' ? '#f39c12' : (c === 'red' ? '#e74c3c' : '#2ecc71'); 
     }
 
     loadData();
