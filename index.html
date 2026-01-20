@@ -100,10 +100,10 @@
         renderAll();
     }
 
+    // --- AUTH LOGIC (Bug Fixed) ---
     function handleLockClick() {
         if (isAuthenticated) relock(); else checkAuth();
     }
-
     function relock() {
         isAuthenticated = false;
         const label = document.getElementById('lock-label');
@@ -111,7 +111,6 @@
         label.classList.remove('unlocked-label');
         renderAll();
     }
-
     async function checkAuth() {
         if (isAuthenticated) return true; 
         const pwd = prompt("Enter password:");
@@ -130,20 +129,35 @@
         }
     }
 
-    function updateRoomDropdown() {
-        const dropdown = document.getElementById('room-filter');
-        const rooms = [...new Set(allPlants.map(p => p.location).filter(l => l))];
-        dropdown.innerHTML = '<option value="">All Rooms</option>' + rooms.map(r => `<option value="${r}">${r}</option>`).join('');
+    // --- AI LEARNING LOGIC ---
+    function calculateNewInterval(plant, observedLevel) {
+        if (!plant.watered_date || observedLevel >= 10) return null;
+        
+        const lastWatered = new Date(plant.watered_date);
+        const daysPassed = (new Date() - lastWatered) / (1000 * 60 * 60 * 24);
+        
+        // Only learn if at least 12 hours have passed to avoid chaotic data
+        if (daysPassed < 0.5) return null;
+
+        // Formula: Calculated Interval = (Days Passed * 10) / (10 - Observed Level)
+        const calculated = (daysPassed * 10) / (10 - observedLevel);
+        
+        // Weighted Average: 80% current belief, 20% new observation
+        const currentInterval = plant.avg_water_interval || 7;
+        const learned = (currentInterval * 0.8) + (calculated * 0.2);
+        
+        return Math.round(learned * 10) / 10; // Keep 1 decimal place
     }
 
-    function filterList() {
-        const query = document.getElementById('search-bar').value.toLowerCase();
-        const room = document.getElementById('room-filter').value;
-        document.querySelectorAll('.plant-card').forEach(card => {
-            const name = card.querySelector('.name-input').value.toLowerCase();
-            const loc = card.querySelector('.location-input').value;
-            card.style.display = (name.includes(query) && (!room || loc === room)) ? 'flex' : 'none';
-        });
+    function calculateDynamicMoisture(plant) {
+        if (!plant.watered_date) return plant.moisture_level || 5;
+        const lastRef = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
+        const daysSinceRef = (new Date() - lastRef) / (1000 * 60 * 60 * 24);
+        const interval = plant.avg_water_interval || 7;
+        
+        // Decay based on the starting moisture level at the time of last check
+        let level = (plant.moisture_level || 10) - (daysSinceRef * (10 / interval));
+        return Math.max(1, Math.min(10, Math.round(level)));
     }
 
     function calculateDaysSince(dateStr) {
@@ -151,15 +165,6 @@
         const diff = new Date() - new Date(dateStr);
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         return days === 0 ? "Today" : `${days}d ago`;
-    }
-
-    function calculateDynamicMoisture(plant) {
-        if (!plant.watered_date) return plant.moisture_level || 5;
-        const lastDate = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
-        const daysPassed = (new Date() - lastDate) / (1000 * 60 * 60 * 24);
-        const interval = plant.avg_water_interval || 7;
-        let level = (plant.moisture_level || 10) - (daysPassed * (10 / interval));
-        return Math.max(1, Math.min(10, Math.round(level)));
     }
 
     function renderAll() {
@@ -198,7 +203,7 @@
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
                     <div class="badge-row">
-                        <span class="badge-ai">Cycle: ${plant.avg_water_interval || '?'}d</span>
+                        <span class="badge-ai">Cycle: ${plant.avg_water_interval ? plant.avg_water_interval + 'd' : '?d'}</span>
                         <span class="badge-days">💧 ${daysAgo}</span>
                     </div>
                     <div class="water-btn-wrap">
@@ -213,28 +218,42 @@
         filterList();
     }
 
+    // --- HANDLERS (Bug Fixed for Mobile) ---
     async function handlePhotoClick(id) {
-        if (!isAuthenticated) { const success = await checkAuth(); if (!success) return; }
-        const fileInput = document.getElementById(`file-${id}`);
-        if (fileInput) fileInput.click();
+        if (!isAuthenticated) { if (!await checkAuth()) return; }
+        document.getElementById(`file-${id}`).click();
     }
 
     async function handleWaterStart(id) {
-        if (!isAuthenticated) { const success = await checkAuth(); if (!success) return; }
+        if (!isAuthenticated) { if (!await checkAuth()) return; }
         startWater(id);
     }
 
     async function manualEntry(id, val) {
-        if (!isAuthenticated) { const success = await checkAuth(); if (!success) { loadData(); return; } }
-        const newTimestamp = new Date().toISOString();
+        if (!isAuthenticated) { if (!await checkAuth()) { loadData(); return; } }
         const intVal = parseInt(val);
         const plantIndex = allPlants.findIndex(p => p.id === id);
-        if (plantIndex !== -1) {
-            allPlants[plantIndex].moisture_level = intVal;
-            allPlants[plantIndex].moisture_timestamp = newTimestamp;
+        const plant = allPlants[plantIndex];
+
+        // AI Recalibration logic
+        const learnedInterval = calculateNewInterval(plant, intVal);
+        
+        const updateData = { 
+            moisture_level: intVal, 
+            moisture_timestamp: new Date().toISOString() 
+        };
+
+        if (learnedInterval) {
+            updateData.avg_water_interval = learnedInterval;
+            plant.avg_water_interval = learnedInterval;
         }
-        updateStatus("Saving...", "saving");
-        await _supabase.from('plants').update({ moisture_level: intVal, moisture_timestamp: newTimestamp }).eq('id', id);
+
+        plant.moisture_level = intVal;
+        plant.moisture_timestamp = updateData.moisture_timestamp;
+
+        updateStatus(learnedInterval ? "Learning Cycle..." : "Saving...", "saving");
+        await _supabase.from('plants').update(updateData).eq('id', id);
+        renderAll();
         updateStatus("Saved", "saved");
     }
 
@@ -244,19 +263,27 @@
             const today = new Date().toISOString().split('T')[0];
             const now = new Date().toISOString();
             const plantIndex = allPlants.findIndex(p => p.id === id);
+            
             if (plantIndex !== -1) {
                 allPlants[plantIndex].watered_date = today;
                 allPlants[plantIndex].moisture_level = 10;
                 allPlants[plantIndex].moisture_timestamp = now;
             }
-            await _supabase.from('plants').update({ watered_date: today, moisture_level: 10, moisture_timestamp: now }).eq('id', id);
+            
+            await _supabase.from('plants').update({ 
+                watered_date: today, 
+                moisture_level: 10, 
+                moisture_timestamp: now 
+            }).eq('id', id);
+            
             renderAll();
             updateStatus("Watered!", "saved");
         }, 1000);
     }
 
+    // --- OTHER CORE FUNCTIONS ---
     async function queueSync(id, col, val) {
-        if (!isAuthenticated) { const success = await checkAuth(); if (!success) { loadData(); return; } }
+        if (!isAuthenticated) { if (!await checkAuth()) { loadData(); return; } }
         const plantIndex = allPlants.findIndex(p => p.id === id);
         if (plantIndex !== -1) allPlants[plantIndex][col] = val;
         updateStatus("Saving...", "saving");
@@ -266,13 +293,6 @@
             if (col === 'location') updateRoomDropdown();
             updateStatus("Saved", "saved");
         }, 800);
-    }
-
-    async function deletePlant(id) {
-        if (!confirm("Permanently remove?")) return;
-        await _supabase.from('plants').delete().eq('id', id);
-        allPlants = allPlants.filter(p => p.id !== id);
-        renderAll();
     }
 
     async function uploadPhoto(id, input) {
@@ -289,11 +309,23 @@
         updateStatus("Photo Saved", "saved");
     }
 
+    async function deletePlant(id) {
+        if (!confirm("Permanently remove?")) return;
+        await _supabase.from('plants').delete().eq('id', id);
+        allPlants = allPlants.filter(p => p.id !== id);
+        renderAll();
+    }
+
     async function addNewPlant() {
-        if (!isAuthenticated) { const success = await checkAuth(); if (!success) return; }
+        if (!isAuthenticated) { if (!await checkAuth()) return; }
         const n = prompt("Plant Name:");
         if (n) {
-            const { data } = await _supabase.from('plants').insert([{ name: n, moisture_level: 10, watered_date: new Date().toISOString().split('T')[0] }]).select();
+            const { data } = await _supabase.from('plants').insert([{ 
+                name: n, 
+                moisture_level: 10, 
+                watered_date: new Date().toISOString().split('T')[0],
+                avg_water_interval: 7 // Default start
+            }]).select();
             if (data) { allPlants.push(data[0]); renderAll(); }
         }
     }
@@ -306,6 +338,22 @@
         let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
         v.style.color = color;
         g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
+    }
+
+    function updateRoomDropdown() {
+        const dropdown = document.getElementById('room-filter');
+        const rooms = [...new Set(allPlants.map(p => p.location).filter(l => l))];
+        dropdown.innerHTML = '<option value="">All Rooms</option>' + rooms.map(r => `<option value="${r}">${r}</option>`).join('');
+    }
+
+    function filterList() {
+        const query = document.getElementById('search-bar').value.toLowerCase();
+        const room = document.getElementById('room-filter').value;
+        document.querySelectorAll('.plant-card').forEach(card => {
+            const name = card.querySelector('.name-input').value.toLowerCase();
+            const loc = card.querySelector('.location-input').value;
+            card.style.display = (name.includes(query) && (!room || loc === room)) ? 'flex' : 'none';
+        });
     }
 
     function updateStatus(t, c) { 
