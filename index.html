@@ -25,9 +25,17 @@
         }
         .unlocked-label { color: var(--primary); font-weight: bold; background: #dcfce7; border: 1px solid #bbf7d0; }
 
-        .filter-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .filter-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .search-group { display: flex; gap: 10px; }
         #search-bar { flex: 2; padding: 12px 15px; border-radius: 25px; border: 1px solid var(--border); font-size: 1rem; outline: none; }
         #room-filter { flex: 1; padding: 0 15px; border-radius: 25px; border: 1px solid var(--border); font-size: 0.9rem; background: white; outline: none; }
+        
+        .sort-btn { 
+            background: white; border: 1px solid var(--border); padding: 8px 15px; 
+            border-radius: 20px; font-size: 0.8rem; font-weight: bold; cursor: pointer;
+            color: #666; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .sort-active { background: var(--primary); color: white; border-color: var(--primary); }
 
         #plant-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; padding: 10px; }
         .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; position: relative; border-left: 5px solid transparent; }
@@ -75,8 +83,11 @@
             <div id="status">Ready</div>
         </div>
         <div class="filter-row">
-            <input type="text" id="search-bar" placeholder="Search plants..." oninput="filterList()">
-            <select id="room-filter" onchange="filterList()"><option value="">All Rooms</option></select>
+            <div class="search-group">
+                <input type="text" id="search-bar" placeholder="Search plants..." oninput="filterList()">
+                <select id="room-filter" onchange="filterList()"><option value="">All Rooms</option></select>
+            </div>
+            <button id="sort-thirst-btn" class="sort-btn" onclick="toggleSort()">📊 Sort: Alphabetical</button>
         </div>
     </div>
     <div id="plant-list"></div>
@@ -92,6 +103,7 @@
     let allPlants = [];
     let waterTimer, syncTimer;
     let isAuthenticated = false; 
+    let sortByThirst = false;
 
     async function loadData() {
         const { data } = await _supabase.from('plants').select('*');
@@ -100,7 +112,19 @@
         renderAll();
     }
 
-    // --- AUTH LOGIC (Bug Fixed) ---
+    function toggleSort() {
+        sortByThirst = !sortByThirst;
+        const btn = document.getElementById('sort-thirst-btn');
+        if (sortByThirst) {
+            btn.innerText = "🔥 Sort: Thirstiest First";
+            btn.classList.add('sort-active');
+        } else {
+            btn.innerText = "📊 Sort: Alphabetical";
+            btn.classList.remove('sort-active');
+        }
+        renderAll();
+    }
+
     function handleLockClick() {
         if (isAuthenticated) relock(); else checkAuth();
     }
@@ -129,24 +153,15 @@
         }
     }
 
-    // --- AI LEARNING LOGIC ---
     function calculateNewInterval(plant, observedLevel) {
         if (!plant.watered_date || observedLevel >= 10) return null;
-        
         const lastWatered = new Date(plant.watered_date);
         const daysPassed = (new Date() - lastWatered) / (1000 * 60 * 60 * 24);
-        
-        // Only learn if at least 12 hours have passed to avoid chaotic data
         if (daysPassed < 0.5) return null;
-
-        // Formula: Calculated Interval = (Days Passed * 10) / (10 - Observed Level)
         const calculated = (daysPassed * 10) / (10 - observedLevel);
-        
-        // Weighted Average: 80% current belief, 20% new observation
         const currentInterval = plant.avg_water_interval || 7;
         const learned = (currentInterval * 0.8) + (calculated * 0.2);
-        
-        return Math.round(learned * 10) / 10; // Keep 1 decimal place
+        return Math.round(learned * 10) / 10;
     }
 
     function calculateDynamicMoisture(plant) {
@@ -154,8 +169,6 @@
         const lastRef = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
         const daysSinceRef = (new Date() - lastRef) / (1000 * 60 * 60 * 24);
         const interval = plant.avg_water_interval || 7;
-        
-        // Decay based on the starting moisture level at the time of last check
         let level = (plant.moisture_level || 10) - (daysSinceRef * (10 / interval));
         return Math.max(1, Math.min(10, Math.round(level)));
     }
@@ -170,7 +183,22 @@
     function renderAll() {
         const list = document.getElementById('plant-list');
         list.innerHTML = '';
-        allPlants.forEach(plant => {
+
+        // Sorting Logic
+        let displayPlants = [...allPlants];
+        if (sortByThirst) {
+            displayPlants.sort((a, b) => {
+                const moistA = calculateDynamicMoisture(a);
+                const moistB = calculateDynamicMoisture(b);
+                if (moistA !== moistB) return moistA - moistB;
+                // If moisture is same, oldest watered date first
+                return new Date(a.watered_date || 0) - new Date(b.watered_date || 0);
+            });
+        } else {
+            displayPlants.sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        displayPlants.forEach(plant => {
             const id = plant.id;
             const currentLevel = calculateDynamicMoisture(plant);
             const daysAgo = calculateDaysSince(plant.watered_date);
@@ -218,7 +246,6 @@
         filterList();
     }
 
-    // --- HANDLERS (Bug Fixed for Mobile) ---
     async function handlePhotoClick(id) {
         if (!isAuthenticated) { if (!await checkAuth()) return; }
         document.getElementById(`file-${id}`).click();
@@ -234,23 +261,11 @@
         const intVal = parseInt(val);
         const plantIndex = allPlants.findIndex(p => p.id === id);
         const plant = allPlants[plantIndex];
-
-        // AI Recalibration logic
         const learnedInterval = calculateNewInterval(plant, intVal);
-        
-        const updateData = { 
-            moisture_level: intVal, 
-            moisture_timestamp: new Date().toISOString() 
-        };
-
-        if (learnedInterval) {
-            updateData.avg_water_interval = learnedInterval;
-            plant.avg_water_interval = learnedInterval;
-        }
-
+        const updateData = { moisture_level: intVal, moisture_timestamp: new Date().toISOString() };
+        if (learnedInterval) { updateData.avg_water_interval = learnedInterval; plant.avg_water_interval = learnedInterval; }
         plant.moisture_level = intVal;
         plant.moisture_timestamp = updateData.moisture_timestamp;
-
         updateStatus(learnedInterval ? "Learning Cycle..." : "Saving...", "saving");
         await _supabase.from('plants').update(updateData).eq('id', id);
         renderAll();
@@ -263,25 +278,17 @@
             const today = new Date().toISOString().split('T')[0];
             const now = new Date().toISOString();
             const plantIndex = allPlants.findIndex(p => p.id === id);
-            
             if (plantIndex !== -1) {
                 allPlants[plantIndex].watered_date = today;
                 allPlants[plantIndex].moisture_level = 10;
                 allPlants[plantIndex].moisture_timestamp = now;
             }
-            
-            await _supabase.from('plants').update({ 
-                watered_date: today, 
-                moisture_level: 10, 
-                moisture_timestamp: now 
-            }).eq('id', id);
-            
+            await _supabase.from('plants').update({ watered_date: today, moisture_level: 10, moisture_timestamp: now }).eq('id', id);
             renderAll();
             updateStatus("Watered!", "saved");
         }, 1000);
     }
 
-    // --- OTHER CORE FUNCTIONS ---
     async function queueSync(id, col, val) {
         if (!isAuthenticated) { if (!await checkAuth()) { loadData(); return; } }
         const plantIndex = allPlants.findIndex(p => p.id === id);
@@ -320,12 +327,7 @@
         if (!isAuthenticated) { if (!await checkAuth()) return; }
         const n = prompt("Plant Name:");
         if (n) {
-            const { data } = await _supabase.from('plants').insert([{ 
-                name: n, 
-                moisture_level: 10, 
-                watered_date: new Date().toISOString().split('T')[0],
-                avg_water_interval: 7 // Default start
-            }]).select();
+            const { data } = await _supabase.from('plants').insert([{ name: n, moisture_level: 10, watered_date: new Date().toISOString().split('T')[0], avg_water_interval: 7 }]).select();
             if (data) { allPlants.push(data[0]); renderAll(); }
         }
     }
