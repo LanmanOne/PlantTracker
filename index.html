@@ -10,7 +10,6 @@
             --primary: #5d8a5d; --bg: #f0f4f0; --card: #ffffff;
             --text: #2d3e2d; --border: #ddd; --blue: #4a90e2; --dark-blue: #357abd;
             --gauge-red: #ff4d4d; --gauge-green: #4caf50; --gauge-blue: #2196f3;
-            --orange: #f39c12;
         }
 
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: var(--text); -webkit-tap-highlight-color: transparent; }
@@ -67,9 +66,16 @@
         .badge-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
         .badge-ai { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.6rem; padding: 3px 7px; border-radius: 6px; font-weight: bold; }
         .badge-days { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; font-size: 0.6rem; padding: 3px 7px; border-radius: 6px; font-weight: bold; }
-        .badge-reminder { background: #fff7ed; color: #ea580c; border: 1px solid #fdba74; font-size: 0.6rem; padding: 3px 7px; border-radius: 6px; font-weight: bold; animation: pulse 2s infinite; }
         
+        .badge-reminder { 
+            background: #fff7ed; color: #ea580c; border: 1px solid #fdba74; 
+            font-size: 0.6rem; padding: 3px 7px; border-radius: 6px; font-weight: bold; 
+            animation: pulse 2s infinite; 
+        }
+        .badge-emergency { background: #fee2e2 !important; color: #b91c1c !important; border-color: #fecaca !important; animation: pulse-fast 1s infinite !important; }
+
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        @keyframes pulse-fast { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
         .water-btn-wrap { position: relative; width: 120px; height: 38px; overflow: hidden; border-radius: 8px; background: var(--blue); }
         .water-btn { position: relative; z-index: 2; width: 100%; height: 100%; background: transparent; color: white; border: none; font-size: 0.65rem; font-weight: bold; cursor: pointer; }
@@ -196,15 +202,17 @@
             const daysAgoRaw = calculateDaysSince(plant.watered_date);
             const daysAgoText = daysAgoRaw === 0 ? "Today" : `${daysAgoRaw}d ago`;
             
-            // REMINDER LOGIC: 
-            // If it's been more than 70% of the usual cycle since the LAST manual reading
+            // RED ZONE ALERT LOGIC
             const lastReadingDate = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
             const daysSinceLastReading = (new Date() - lastReadingDate) / (1000 * 60 * 60 * 24);
             const interval = plant.avg_water_interval || 7;
-            const needsMeterCheck = daysSinceLastReading > (interval * 0.7) && currentLevel < 8;
+            
+            const isOldReading = daysSinceLastReading > (interval * 0.7);
+            const isRedZone = currentLevel <= 3;
+            const needsMeterCheck = isOldReading || isRedZone;
 
             const card = document.createElement('div');
-            card.className = `plant-card ${currentLevel <= 3 ? 'card-dry' : ''}`;
+            card.className = `plant-card ${isRedZone ? 'card-dry' : ''}`;
             card.innerHTML = `
                 <div class="card-header">
                     <input type="text" class="location-input" value="${plant.location || 'UNSET ROOM'}" oninput="queueSync('${id}', 'location', this.value)">
@@ -235,7 +243,7 @@
                     <div class="badge-row">
                         <span class="badge-ai">Cycle: ${Math.round(interval)}d</span>
                         <span class="badge-days">💧 ${daysAgoText}</span>
-                        ${needsMeterCheck ? `<span class="badge-reminder">⚖️ CHECK METER</span>` : ''}
+                        ${needsMeterCheck ? `<span class="badge-reminder ${isRedZone ? 'badge-emergency' : ''}">⚖️ CHECK WATER</span>` : ''}
                     </div>
                     <div class="water-btn-wrap">
                         <div id="fill-${id}" class="water-fill"></div>
