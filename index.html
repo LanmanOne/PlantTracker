@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -207,7 +208,7 @@
                         <img src="${plant.image_url || ''}" style="${plant.image_url ? 'display:block' : 'display:none'}">
                         <span class="photo-label" style="${plant.image_url ? 'display:none' : 'display:block'}">PHOTO</span>
                     </div>
-                    <input type="file" id="file-${id}" style="display:none" accept="image/*" onchange="uploadPhoto('${id}', this)">
+                    <input type="file" id="file-${id}" style="display:none" accept="image/*,application/pdf" onchange="uploadPhoto('${id}', this)">
                     <div>
                         <input type="text" class="name-input" value="${plant.name}" oninput="queueSync('${id}', 'name', this.value)">
                         <input type="text" class="notes-input" placeholder="Add notes..." value="${plant.notes || ''}" oninput="queueSync('${id}', 'notes', this.value)">
