@@ -8,82 +8,78 @@
     <style>
         :root {
             --primary: #5d8a5d; --bg: #f0f4f0; --card: #ffffff;
-            --text: #2d3e2d; --border: #ddd; --blue: #4a90e2; --dark-blue: #357abd;
+            --text: #2d3e2d; --border: #ddd; --blue: #4a90e2; 
             --gauge-red: #ff4d4d; --gauge-green: #4caf50; --gauge-blue: #2196f3;
             --sip-orange: #f39c12;
         }
 
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: var(--text); -webkit-tap-highlight-color: transparent; }
+        /* STOPS GHOST SELECTION ON BUTTONS */
+        .hold-btn-wrap, .step-btn, .lock-status { 
+            -webkit-touch-callout: none; 
+            -webkit-user-select: none; 
+            user-select: none; 
+        }
+
+        /* RESTORE INTERACTION FOR INPUTS AND PHOTOS */
+        input, .photo-box { 
+            -webkit-user-select: auto; 
+            user-select: auto; 
+            pointer-events: auto !important; 
+        }
+
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: var(--text); }
         .container { max-width: 1200px; margin: auto; padding-bottom: 120px; }
         
         .header { padding: 15px 10px; position: sticky; top: 0; background: var(--bg); z-index: 100; border-bottom: 1px solid #e2e8f0; }
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         h1 { margin: 0; font-size: 1.6rem; color: #3e5c3e; font-weight: 800; }
         
-        .lock-status {
-            font-size: 0.7rem; color: #888; margin-left: 8px; font-weight: normal; cursor: pointer;
-            padding: 4px 12px; border-radius: 20px; background: #e8eee8; transition: all 0.2s; border: 1px solid transparent;
-        }
+        .lock-status { font-size: 0.7rem; color: #888; padding: 4px 12px; border-radius: 20px; background: #e8eee8; cursor: pointer; }
         .unlocked-label { color: var(--primary); font-weight: bold; background: #dcfce7; border: 1px solid #bbf7d0; }
 
-        #plant-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; padding: 10px; }
+        #plant-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; padding: 10px; }
         .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; position: relative; border-left: 5px solid transparent; }
-        .card-dry { border-left-color: var(--gauge-red); background: #fff9f9; }
+        
+        .card-top { display: grid; grid-template-columns: 85px 1fr; gap: 12px; align-items: center; }
+        .photo-box { width: 85px; height: 85px; border: 2px dashed #a8c6a8; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fdfdfd; position: relative; cursor: pointer; }
+        .photo-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1; }
+        .photo-plus { font-size: 1.5rem; color: #a8c6a8; font-weight: bold; z-index: 0; }
 
-        .card-top { display: grid; grid-template-columns: 75px 1fr; gap: 12px; align-items: flex-start; }
-        .photo-box { width: 75px; height: 75px; border: 2px dashed #a8c6a8; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fafafa; cursor: pointer; position: relative; }
-        .photo-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; pointer-events: none; }
-        .photo-label { font-size: 0.6rem; font-weight: bold; color: #888; pointer-events: none; }
+        .name-label { font-size: 1.15rem; font-weight: bold; color: #2d3e2d; }
+        .notes-label { font-size: 0.8rem; color: #777; font-style: italic; }
 
-        .location-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; color: #888; font-weight: bold; }
-        .name-label { font-size: 1.1rem; font-weight: bold; margin-bottom: 1px; }
-        .notes-label { font-size: 0.8rem; color: #666; font-style: italic; display: block; margin-bottom: 5px; }
-
-        /* MOISTURE SECTION */
         .moisture-section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 5px; }
-        .moisture-title { font-size: 0.65rem; font-weight: 800; color: #999; text-transform: uppercase; }
-        .moisture-number { font-size: 1.4rem; font-weight: 900; line-height: 1; }
+        .moisture-number { font-size: 1.5rem; font-weight: 900; }
 
-        .moisture-wrap { background: #fdfdfd; padding: 6px; border-radius: 10px; border: 1px solid #eee; position: relative; min-height: 44px; display: flex; align-items: center; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); }
-        .moisture-controls { display: flex; align-items: center; gap: 6px; width: 100%; z-index: 1; }
+        .moisture-wrap { background: #fdfdfd; padding: 6px; border-radius: 10px; border: 1px solid #eee; position: relative; min-height: 48px; display: flex; align-items: center; }
+        .moisture-controls { display: flex; align-items: center; gap: 8px; width: 100%; }
         
-        .step-btn { background: white; border: 1px solid #ccc; border-radius: 8px; width: 36px; height: 36px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .gauge-slider { flex-grow: 1; height: 12px; border-radius: 6px; -webkit-appearance: none; appearance: none; background: #ddd; pointer-events: auto; }
+        .step-btn { background: white; border: 1px solid #ccc; border-radius: 8px; width: 40px; height: 40px; font-weight: bold; font-size: 1.4rem; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer; }
+        .gauge-slider { flex-grow: 1; height: 12px; border-radius: 6px; -webkit-appearance: none; background: #ddd; }
         
-        .input-shield { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: pointer; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.01); }
-        .unlock-hint { background: rgba(255,255,255,0.9); color: var(--primary); font-size: 0.6rem; padding: 4px 10px; border-radius: 15px; font-weight: bold; border: 1px solid var(--primary); opacity: 0; transition: opacity 0.2s; }
-        .input-shield:hover .unlock-hint { opacity: 1; }
+        .input-shield { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: pointer; border-radius: 10px; }
 
-        /* BADGES */
-        .badge-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
-        .badge { font-size: 0.6rem; padding: 3px 6px; border-radius: 6px; font-weight: bold; border: 1px solid transparent; }
-        .badge-ai { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
-        .badge-days { background: #fef3c7; color: #d97706; border-color: #fde68a; }
-        .badge-check { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
-
-        /* ACTION BUTTONS */
-        .action-group { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
-        .hold-btn-wrap { position: relative; height: 44px; border-radius: 10px; overflow: hidden; background: #f0f0f0; cursor: pointer; flex: 1; border: 1px solid transparent; }
+        .action-group { display: flex; gap: 8px; margin-top: 8px; }
+        .hold-btn-wrap { position: relative; height: 50px; border-radius: 10px; overflow: hidden; background: #f3f3f3; cursor: pointer; flex: 1; border: 1px solid transparent; }
         .hold-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; z-index: 1; }
-        .hold-label { position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #444; font-size: 0.7rem; font-weight: bold; pointer-events: none; text-align: center; }
+        .hold-label { position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #444; font-size: 0.75rem; font-weight: 900; }
         
         .sip-wrap { border-color: var(--sip-orange); }
-        .sip-fill { background: var(--sip-orange); transition: width 0.1s linear; }
+        .sip-fill { background: var(--sip-orange); }
         .soak-wrap { border-color: var(--blue); }
-        .soak-fill { background: var(--blue); transition: width 0.1s linear; }
-        .holding .hold-label { color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .soak-fill { background: var(--blue); }
+        .holding .hold-label { color: white; text-shadow: 0 1px 1px rgba(0,0,0,0.3); }
 
         .add-plant-btn { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 200; cursor: pointer; }
-        #status { font-size: 0.8rem; font-weight: bold; color: #aaa; }
     </style>
 </head>
-<body>
+<body onscroll="endHold()">
 
 <div class="container">
     <div class="header">
         <div class="header-top">
             <h1>🌿 Garden <span id="lock-label" class="lock-status" onclick="handleLockClick()">🔒 Tap to Unlock</span></h1>
-            <div id="status">Ready</div>
+            <div id="status" style="font-size: 0.7rem; font-weight:bold; color:#aaa">Ready</div>
         </div>
         <input type="text" id="search-bar" placeholder="Search plants..." oninput="filterList()" style="width:100%; padding:12px; border-radius:25px; border:1px solid #ddd; box-sizing: border-box;">
     </div>
@@ -123,15 +119,6 @@
         return false;
     }
 
-    function formatTimeAgo(dateStr) {
-        if (!dateStr) return "Never";
-        const diffInSec = Math.floor((new Date() - new Date(dateStr)) / 1000);
-        if (diffInSec < 60) return "Just now";
-        if (diffInSec < 3600) return Math.floor(diffInSec / 60) + "m";
-        if (diffInSec < 86400) return Math.floor(diffInSec / 3600) + "h";
-        return Math.floor(diffInSec / 86400) + "d";
-    }
-
     function calculateDynamicMoisture(plant) {
         const lastRef = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
         const daysSinceRef = (new Date() - lastRef) / (1000 * 60 * 60 * 24);
@@ -146,33 +133,28 @@
         allPlants.sort((a,b) => a.name.localeCompare(b.name)).forEach(plant => {
             const id = plant.id;
             const currentLevel = calculateDynamicMoisture(plant);
-            const isRedZone = currentLevel <= 3;
-
             const card = document.createElement('div');
-            card.className = `plant-card ${isRedZone ? 'card-dry' : ''}`;
+            card.className = `plant-card ${currentLevel <= 3 ? 'card-dry' : ''}`;
             card.innerHTML = `
-                <div class="location-label">${plant.location || 'UNSET ROOM'}</div>
                 <div class="card-top">
                     <div class="photo-box" onclick="handlePhotoClick('${id}')">
                         <img src="${plant.image_url || ''}" style="${plant.image_url ? 'display:block' : 'display:none'}">
-                        <span class="photo-label" style="${plant.image_url ? 'display:none' : 'display:block'}">PHOTO</span>
+                        <span class="photo-plus">+</span>
                     </div>
                     <input type="file" id="file-${id}" style="display:none" accept="image/*,application/pdf" onchange="uploadPhoto('${id}', this)">
-                    <div style="flex:1">
+                    <div>
                         <div class="name-label">${plant.name}</div>
-                        <span class="notes-label">${plant.notes || 'No notes'}</span>
+                        <span class="notes-label">${plant.notes || ''}</span>
                     </div>
                 </div>
 
                 <div class="moisture-section-header">
-                    <span class="moisture-title">Moisture Status</span>
+                    <span style="font-size:0.6rem; font-weight:800; color:#999">LEVEL</span>
                     <span id="val-${id}" class="moisture-number">${currentLevel}</span>
                 </div>
 
                 <div class="moisture-wrap">
-                    <div id="shield-${id}" class="input-shield" onclick="unlockControls('${id}')">
-                        <span class="unlock-hint">TAP TO ADJUST</span>
-                    </div>
+                    <div id="shield-${id}" class="input-shield" onclick="unlockControls('${id}')"></div>
                     <div class="moisture-controls">
                         <button id="minus-${id}" class="step-btn" style="visibility:hidden" onclick="stepMoisture('${id}', -1)">−</button>
                         <input type="range" id="gauge-${id}" class="gauge-slider" min="1" max="10" value="${currentLevel}" oninput="updateUI('${id}', this.value)" onchange="manualEntry('${id}', this.value)">
@@ -180,20 +162,14 @@
                     </div>
                 </div>
 
-                <div class="badge-row">
-                    <span class="badge badge-ai">Cycle: ${Math.round(plant.avg_water_interval || 7)}d</span>
-                    <span class="badge badge-days">💧 ${formatTimeAgo(plant.watered_date)}</span>
-                    <span class="badge badge-check">⚖️ ${formatTimeAgo(plant.moisture_timestamp)}</span>
-                </div>
-
                 <div class="action-group">
-                    <div class="hold-btn-wrap sip-wrap" onmousedown="startHold('${id}', 'sip', 1500)" ontouchstart="startHold('${id}', 'sip', 1500)" onmouseup="endHold()" ontouchend="endHold()">
+                    <div class="hold-btn-wrap sip-wrap" onmousedown="startHold('${id}', 'sip', 2000)" ontouchstart="startHold('${id}', 'sip', 2000)" onmouseup="endHold()" ontouchend="endHold()">
                         <div id="sipfill-${id}" class="hold-fill sip-fill"></div>
-                        <div class="hold-label">SIP</div>
+                        <div class="hold-label">SIP (2s)</div>
                     </div>
-                    <div class="hold-btn-wrap soak-wrap" onmousedown="startHold('${id}', 'soak', 3000)" ontouchstart="startHold('${id}', 'soak', 3000)" onmouseup="endHold()" ontouchend="endHold()">
+                    <div class="hold-btn-wrap soak-wrap" onmousedown="startHold('${id}', 'soak', 4000)" ontouchstart="startHold('${id}', 'soak', 4000)" onmouseup="endHold()" ontouchend="endHold()">
                         <div id="soakfill-${id}" class="hold-fill soak-fill"></div>
-                        <div class="hold-label">SOAK</div>
+                        <div class="hold-label">SOAK (4s)</div>
                     </div>
                 </div>
             `;
@@ -202,30 +178,28 @@
         });
     }
 
+    async function handlePhotoClick(id) {
+        if (!isAuthenticated) { if (!await checkAuth()) return; }
+        document.getElementById(`file-${id}`).click();
+    }
+
+    async function uploadPhoto(id, input) {
+        const file = input.files[0];
+        if (!file) return;
+        document.getElementById('status').innerText = "Uploading...";
+        const fileName = `${id}-${Date.now()}-${file.name}`;
+        await _supabase.storage.from('plant-photos').upload(fileName, file);
+        const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
+        await _supabase.from('plants').update({ image_url: urlData.publicUrl }).eq('id', id);
+        loadData();
+        document.getElementById('status').innerText = "Ready";
+    }
+
     function unlockControls(id) {
-        if (!isAuthenticated) { alert("Unlock Garden first."); return; }
+        if (!isAuthenticated) return;
         document.getElementById(`shield-${id}`).style.display = 'none';
         document.getElementById(`minus-${id}`).style.visibility = 'visible';
         document.getElementById(`plus-${id}`).style.visibility = 'visible';
-        setTimeout(() => { if(document.getElementById(`shield-${id}`)) renderAll(); }, 20000);
-    }
-
-    function stepMoisture(id, dir) {
-        const input = document.getElementById(`gauge-${id}`);
-        const newVal = Math.max(1, Math.min(10, parseInt(input.value) + dir));
-        input.value = newVal;
-        updateUI(id, newVal);
-        manualEntry(id, newVal);
-    }
-
-    function updateUI(id, val) {
-        const v = document.getElementById(`val-${id}`);
-        const g = document.getElementById(`gauge-${id}`);
-        if (!v || !g) return;
-        v.innerText = val;
-        let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
-        v.style.color = color;
-        g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
     }
 
     function startHold(id, type, duration) {
@@ -258,57 +232,28 @@
     async function executeSip(id) {
         const plant = allPlants.find(p => p.id === id);
         const current = calculateDynamicMoisture(plant);
-        const newVal = Math.min(10, current + 3);
-        const now = new Date().toISOString();
-        await _supabase.from('plants').update({ moisture_level: newVal, moisture_timestamp: now }).eq('id', id);
+        await _supabase.from('plants').update({ moisture_level: Math.min(10, current + 3), moisture_timestamp: new Date().toISOString() }).eq('id', id);
         loadData();
     }
 
     async function executeSoak(id) {
-        const now = new Date().toISOString();
-        const today = now.split('T')[0];
-        await _supabase.from('plants').update({ watered_date: today, moisture_level: 10, moisture_timestamp: now }).eq('id', id);
+        await _supabase.from('plants').update({ watered_date: new Date().toISOString().split('T')[0], moisture_level: 10, moisture_timestamp: new Date().toISOString() }).eq('id', id);
         loadData();
+    }
+
+    function updateUI(id, val) {
+        const v = document.getElementById(`val-${id}`);
+        const g = document.getElementById(`gauge-${id}`);
+        if (!v || !g) return;
+        v.innerText = val;
+        let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
+        v.style.color = color;
+        g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
     }
 
     async function manualEntry(id, val) {
-        const now = new Date().toISOString();
-        const plant = allPlants.find(p => p.id === id);
-        const intVal = parseInt(val);
-        const learned = calculateNewInterval(plant, intVal);
-        const updateData = { moisture_level: intVal, moisture_timestamp: now };
-        if (learned) updateData.avg_water_interval = Math.round(learned);
-        await _supabase.from('plants').update(updateData).eq('id', id);
+        await _supabase.from('plants').update({ moisture_level: parseInt(val), moisture_timestamp: new Date().toISOString() }).eq('id', id);
         loadData();
-    }
-
-    function calculateNewInterval(plant, observedLevel) {
-        if (!plant.watered_date || observedLevel >= 10) return null;
-        const daysPassed = (new Date() - new Date(plant.watered_date)) / (1000 * 60 * 60 * 24);
-        if (daysPassed < 0.2) return null; 
-        const calculated = (daysPassed * 10) / (10 - observedLevel);
-        return ((plant.avg_water_interval || 7) * 0.7) + (calculated * 0.3);
-    }
-
-    async function handlePhotoClick(id) {
-        if (!isAuthenticated) { if (!await checkAuth()) return; }
-        document.getElementById(`file-${id}`).click();
-    }
-
-    async function uploadPhoto(id, input) {
-        const file = input.files[0];
-        if (!file) return;
-        updateStatus("Uploading...", "saving");
-        const fileName = `${id}-${Date.now()}-${file.name}`;
-        await _supabase.storage.from('plant-photos').upload(fileName, file);
-        const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
-        await _supabase.from('plants').update({ image_url: urlData.publicUrl }).eq('id', id);
-        loadData();
-    }
-
-    function updateStatus(t, c) { 
-        const s = document.getElementById('status'); s.innerText = t; 
-        s.style.color = c === 'saved' ? '#2ecc71' : '#f39c12'; 
     }
 
     function filterList() {
