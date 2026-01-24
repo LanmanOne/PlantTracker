@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logan's Garden Vault v6.9</title>
+    <title>Logan's Garden Vault v7.4.2</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -13,12 +13,10 @@
             --sip-orange: #f39c12; --alert-red: #e74c3c;
         }
 
-        /* PROTECTION */
-        .hold-btn-wrap, .step-btn, .lock-status, .badge, .alert-badge, .confirm-btn { 
+        /* Prevent accidental text selection during long-press */
+        .hold-btn-wrap, .step-btn, .lock-status, .badge, .confirm-btn { 
             -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; 
         }
-
-        input, .photo-box { -webkit-user-select: auto; user-select: auto; pointer-events: auto !important; }
 
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: var(--text); }
         .container { max-width: 1200px; margin: auto; padding-bottom: 120px; }
@@ -27,43 +25,30 @@
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         h1 { margin: 0; font-size: 1.6rem; color: #3e5c3e; font-weight: 800; }
         
-        .lock-status { font-size: 0.7rem; color: #888; padding: 4px 12px; border-radius: 20px; background: #e8eee8; cursor: pointer; border: 1px solid transparent; }
+        .lock-status { font-size: 0.7rem; color: #888; padding: 4px 12px; border-radius: 20px; background: #e8eee8; cursor: pointer; }
         .unlocked-label { color: var(--primary); font-weight: bold; background: #dcfce7; border: 1px solid #bbf7d0; }
 
         #plant-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; padding: 10px; }
-        .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; position: relative; border-left: 5px solid transparent; transition: all 0.3s; }
-        .card-dry { border-left-color: var(--gauge-red); background: #fff8f8; }
-
+        .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; position: relative; }
+        
         .card-top { display: grid; grid-template-columns: 85px 1fr; gap: 12px; align-items: flex-start; }
         .photo-box { width: 85px; height: 85px; border: 2px dashed #a8c6a8; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fdfdfd; position: relative; cursor: pointer; }
         .photo-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1; }
         
-        .name-area { display: flex; flex-direction: column; gap: 2px; }
-        .name-label { font-size: 1.1rem; font-weight: bold; color: #2d3e2d; }
-        
-        .alert-badge { color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; font-weight: 900; display: inline-block; width: fit-content; margin-top: 2px; text-transform: uppercase; }
-        
-        .confirm-btn { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 0.6rem; padding: 4px 8px; font-weight: 800; cursor: pointer; margin-top: 4px; display: inline-block; text-transform: uppercase; width: fit-content; }
-
         .badge-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
         .badge { font-size: 0.65rem; padding: 3px 8px; border-radius: 6px; font-weight: bold; border: 1px solid transparent; }
         .badge-ai { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
         .badge-water { background: #fef3c7; color: #d97706; border-color: #fde68a; }
         .badge-check { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
-        .badge-stale { background: #fff5f5; color: #c0392b; border: 2px solid #e74c3c; animation: pulse 2s infinite; }
 
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-
-        .moisture-section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 5px; }
-        .moisture-number { font-size: 1.6rem; font-weight: 900; }
-
+        /* MOISTURE CONTROLS */
         .moisture-wrap { background: #fdfdfd; padding: 6px; border-radius: 10px; border: 1px solid #eee; position: relative; min-height: 48px; display: flex; align-items: center; }
+        .input-shield { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: pointer; border-radius: 10px; background: transparent; }
         .moisture-controls { display: flex; align-items: center; gap: 8px; width: 100%; }
         
-        .step-btn { background: white; border: 1px solid #ccc; border-radius: 8px; width: 44px; height: 44px; font-weight: bold; font-size: 1.6rem; cursor: pointer; display: none; align-items: center; justify-content: center; }
+        .step-btn { background: white; border: 1px solid #ccc; border-radius: 8px; width: 44px; height: 44px; font-weight: bold; font-size: 1.6rem; cursor: pointer; display: none; align-items: center; justify-content: center; color: #555; }
         .gauge-slider { flex-grow: 1; height: 14px; border-radius: 7px; -webkit-appearance: none; background: #ddd; }
-        .input-shield { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: pointer; border-radius: 10px; }
-
+        
         .action-group { display: flex; gap: 8px; margin-top: 8px; }
         .hold-btn-wrap { position: relative; height: 50px; border-radius: 10px; overflow: hidden; background: #f3f3f3; cursor: pointer; flex: 1; border: 1px solid transparent; }
         .hold-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; z-index: 1; }
@@ -109,19 +94,23 @@
         const past = new Date(dateStr);
         const now = new Date();
         const diffMs = now - past;
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
         const diffSec = Math.floor(diffMs / 1000);
         const diffMin = Math.floor(diffSec / 60);
         const diffHr = Math.floor(diffMin / 60);
-        const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
-        let label = "";
-        if (diffSec < 0) label = "0s";
-        else if (diffSec < 60) label = `${diffSec}s`;
-        else if (diffMin < 60) label = `${diffMin}m`;
-        else if (diffHr < 24) label = `${diffHr}h`;
-        else label = `${Math.floor(diffDays)}d`;
+        if (diffSec < 60) return { label: `${diffSec}s`, days: diffDays };
+        if (diffMin < 60) return { label: `${diffMin}m`, days: diffDays };
+        if (diffHr < 24) return { label: `${diffHr}h`, days: diffDays };
+        return { label: `${Math.floor(diffDays)}d`, days: diffDays };
+    }
 
-        return { label, days: diffDays };
+    function getActivityData(plant) {
+        const lastSoak = new Date(plant.watered_date || 0);
+        const lastCheck = new Date(plant.moisture_timestamp || 0);
+        if (lastSoak >= lastCheck) return { label: `💧 ${getTimeData(plant.watered_date).label}` };
+        const icon = (plant.last_action_type === 'sip') ? '🥤' : '⚖️';
+        return { label: `${icon} ${getTimeData(plant.moisture_timestamp).label}` };
     }
 
     function calculateDynamicMoisture(plant) {
@@ -135,28 +124,17 @@
         return Math.max(1, Math.min(10, Math.round(level)));
     }
 
-    function getRiskAnalysis(plant) {
-        const checkTime = getTimeData(plant.moisture_timestamp);
-        const cycleDays = plant.avg_water_interval || 7;
-        const predictedLevel = calculateDynamicMoisture(plant);
-        const riskThreshold = cycleDays * 0.25; 
-        const isDataStale = checkTime.days > riskThreshold;
-        const isApproachingDry = (predictedLevel <= 5 && checkTime.days > (cycleDays * 0.15));
-        return { isAtRisk: isDataStale || isApproachingDry, isCritical: predictedLevel <= 3 };
-    }
-
     function renderAll() {
         const list = document.getElementById('plant-list');
         list.innerHTML = '';
         allPlants.sort((a,b) => a.name.localeCompare(b.name)).forEach(plant => {
             const id = plant.id;
             const currentLevel = calculateDynamicMoisture(plant);
-            const waterTime = getTimeData(plant.watered_date);
+            const activity = getActivityData(plant);
             const checkTime = getTimeData(plant.moisture_timestamp);
-            const risk = getRiskAnalysis(plant);
 
             const card = document.createElement('div');
-            card.className = `plant-card ${risk.isCritical ? 'card-dry' : ''}`;
+            card.className = 'plant-card';
             card.innerHTML = `
                 <div class="card-top">
                     <div class="photo-box" onclick="handlePhotoClick('${id}')">
@@ -165,27 +143,18 @@
                     </div>
                     <input type="file" id="file-${id}" style="display:none" accept="image/*,application/pdf" onchange="uploadPhoto('${id}', this)">
                     <div class="name-area">
-                        <div class="name-label">${plant.name}</div>
-                        
-                        ${risk.isCritical ? 
-                            '<div class="alert-badge" style="background:var(--alert-red)">⚠️ WATER NOW</div>' : 
-                          risk.isAtRisk ? 
-                            `<div>
-                                <div class="alert-badge" style="background:var(--sip-orange)">⚠️ VERIFY MOISTURE</div>
-                                <div class="confirm-btn" onclick="confirmCurrentLevel('${id}', ${currentLevel})">✓ Confirm ${currentLevel}</div>
-                             </div>` : ''}
-                        
+                        <div class="name-label" style="font-weight:bold; font-size:1.1rem;">${plant.name}</div>
                         <div class="badge-row">
                             <span class="badge badge-ai">Cycle: ${Math.round(plant.avg_water_interval || 7)}d</span>
-                            <span class="badge badge-water">💧 ${waterTime.label}</span>
-                            <span class="badge badge-check ${risk.isAtRisk ? 'badge-stale' : ''}">⚖️ ${checkTime.label}</span>
+                            <span class="badge badge-water">${activity.label}</span>
+                            <span class="badge badge-check">⚖️ ${checkTime.label}</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="moisture-section-header">
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:5px;">
                     <span style="font-size:0.6rem; font-weight:800; color:#999">CURRENT LEVEL</span>
-                    <span id="val-${id}" class="moisture-number">${currentLevel}</span>
+                    <span id="val-${id}" style="font-size:1.6rem; font-weight:900;">${currentLevel}</span>
                 </div>
 
                 <div class="moisture-wrap">
@@ -213,12 +182,12 @@
         });
     }
 
-    /* --- LOGIC --- */
-    async function confirmCurrentLevel(id, val) {
-        if (!isAuthenticated) { if (!await checkAuth()) return; }
-        const nowISO = new Date().toISOString();
-        await _supabase.from('plants').update({ moisture_level: val, moisture_timestamp: nowISO }).eq('id', id);
-        loadData();
+    /* --- RESTORED: Control Unlocking --- */
+    function unlockControls(id) {
+        if (!isAuthenticated) return;
+        document.getElementById(`shield-${id}`).style.display = 'none';
+        document.getElementById(`minus-${id}`).style.display = 'flex';
+        document.getElementById(`plus-${id}`).style.display = 'flex';
     }
 
     async function stepMoisture(id, delta) {
@@ -230,17 +199,68 @@
         await manualEntry(id, newVal);
     }
 
-    function unlockControls(id) {
+    async function manualEntry(id, val) {
         if (!isAuthenticated) return;
-        document.getElementById(`shield-${id}`).style.display = 'none';
-        document.getElementById(`minus-${id}`).style.display = 'flex';
-        document.getElementById(`plus-${id}`).style.display = 'flex';
+        const nowISO = new Date().toISOString();
+        await _supabase.from('plants').update({ 
+            moisture_level: parseInt(val), 
+            moisture_timestamp: nowISO,
+            last_action_type: 'check'
+        }).eq('id', id);
+        loadData();
     }
 
-    async function manualEntry(id, val) {
+    async function executeSip(id) {
+        if (!isAuthenticated) return;
+        const plant = allPlants.find(p => p.id === id);
+        const current = calculateDynamicMoisture(plant);
         const nowISO = new Date().toISOString();
-        await _supabase.from('plants').update({ moisture_level: parseInt(val), moisture_timestamp: nowISO }).eq('id', id);
+        await _supabase.from('plants').update({ 
+            moisture_level: Math.min(10, current + 3), 
+            moisture_timestamp: nowISO,
+            last_action_type: 'sip'
+        }).eq('id', id);
         loadData();
+    }
+
+    async function executeSoak(id) {
+        if (!isAuthenticated) return;
+        const nowISO = new Date().toISOString();
+        await _supabase.from('plants').update({ 
+            watered_date: nowISO, 
+            moisture_level: 10, 
+            moisture_timestamp: nowISO,
+            last_action_type: 'soak'
+        }).eq('id', id);
+        loadData();
+    }
+
+    /* --- STANDARD UTILITIES --- */
+    function updateUI(id, val) {
+        const v = document.getElementById(`val-${id}`);
+        const g = document.getElementById(`gauge-${id}`);
+        if (!v || !g) return;
+        v.innerText = val;
+        let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
+        v.style.color = color;
+        g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
+    }
+
+    async function handlePhotoClick(id) {
+        if (!isAuthenticated) { if (!await checkAuth()) return; }
+        document.getElementById(`file-${id}`).click();
+    }
+
+    async function uploadPhoto(id, input) {
+        const file = input.files[0];
+        if (!file) return;
+        document.getElementById('status').innerText = "Uploading...";
+        const fileName = `${id}-${Date.now()}-${file.name}`;
+        await _supabase.storage.from('plant-photos').upload(fileName, file);
+        const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
+        await _supabase.from('plants').update({ image_url: urlData.publicUrl }).eq('id', id);
+        loadData();
+        document.getElementById('status').innerText = "Ready";
     }
 
     function handleLockClick() { if (isAuthenticated) relock(); else checkAuth(); }
@@ -277,47 +297,6 @@
             if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; fill.parentElement.classList.remove('holding'); }
         }
         activeHold = null;
-    }
-
-    async function executeSip(id) {
-        const plant = allPlants.find(p => p.id === id);
-        const current = calculateDynamicMoisture(plant);
-        const nowISO = new Date().toISOString();
-        await _supabase.from('plants').update({ moisture_level: Math.min(10, current + 3), moisture_timestamp: nowISO }).eq('id', id);
-        loadData();
-    }
-
-    async function executeSoak(id) {
-        const nowISO = new Date().toISOString();
-        await _supabase.from('plants').update({ watered_date: nowISO, moisture_level: 10, moisture_timestamp: nowISO }).eq('id', id);
-        loadData();
-    }
-
-    function updateUI(id, val) {
-        const v = document.getElementById(`val-${id}`);
-        const g = document.getElementById(`gauge-${id}`);
-        if (!v || !g) return;
-        v.innerText = val;
-        let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
-        v.style.color = color;
-        g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
-    }
-
-    async function handlePhotoClick(id) {
-        if (!isAuthenticated) { if (!await checkAuth()) return; }
-        document.getElementById(`file-${id}`).click();
-    }
-
-    async function uploadPhoto(id, input) {
-        const file = input.files[0];
-        if (!file) return;
-        document.getElementById('status').innerText = "Uploading...";
-        const fileName = `${id}-${Date.now()}-${file.name}`;
-        await _supabase.storage.from('plant-photos').upload(fileName, file);
-        const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
-        await _supabase.from('plants').update({ image_url: urlData.publicUrl }).eq('id', id);
-        loadData();
-        document.getElementById('status').innerText = "Ready";
     }
 
     function filterList() {
