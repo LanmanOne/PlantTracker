@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logan's Garden Vault v7.5.4</title>
+    <title>Logan's Garden Vault v7.5.5</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -30,7 +30,7 @@
         .unlocked-label { color: var(--primary); font-weight: bold; background: #dcfce7; border: 1px solid #bbf7d0; }
 
         .room-section { margin-top: 20px; }
-        .room-header { font-size: 1.1rem; font-weight: 800; color: #555; padding: 10px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #d8e2d8; margin-bottom: 10px; }
+        .room-header { font-size: 1.1rem; font-weight: 800; color: #555; padding: 10px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #cedece; margin-bottom: 10px; }
 
         .plant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; }
         .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; position: relative; }
@@ -71,9 +71,9 @@
             <h1>🌿 Garden <span id="lock-label" class="lock-status" onclick="handleLockClick()">🔒 Tap to Unlock</span></h1>
             <div id="status" style="font-size: 0.7rem; font-weight:bold; color:#aaa">Ready</div>
         </div>
-        <input type="text" id="search-bar" placeholder="Search plants or rooms..." oninput="filterList()" style="width:100%; padding:12px; border-radius:25px; border:1px solid #ddd; box-sizing: border-box;">
+        <input type="text" id="search-bar" placeholder="Search plants or locations..." oninput="filterList()" style="width:100%; padding:12px; border-radius:25px; border:1px solid #ddd; box-sizing: border-box;">
     </div>
-    <div id="room-container"></div>
+    <div id="location-container"></div>
 </div>
 
 <button class="add-plant-btn" onclick="addNewPlant()">+ Add New Plant</button>
@@ -150,20 +150,22 @@
     }
 
     function renderAll() {
-        const container = document.getElementById('room-container');
+        const container = document.getElementById('location-container');
         container.innerHTML = '';
-        const rooms = [...new Set(allPlants.map(p => p.room || 'Unknown Room'))].sort();
+        
+        // Use 'location' column from Supabase
+        const locations = [...new Set(allPlants.map(p => p.location || 'Unknown Location'))].sort();
 
-        rooms.forEach(roomName => {
-            const roomPlants = allPlants.filter(p => (p.room || 'Unknown Room') === roomName).sort((a,b) => a.name.localeCompare(b.name));
-            if (roomPlants.length === 0) return;
+        locations.forEach(locName => {
+            const locPlants = allPlants.filter(p => (p.location || 'Unknown Location') === locName).sort((a,b) => a.name.localeCompare(b.name));
+            if (locPlants.length === 0) return;
 
             const section = document.createElement('div');
             section.className = 'room-section';
-            section.innerHTML = `<div class="room-header">${roomName}</div><div class="plant-grid"></div>`;
+            section.innerHTML = `<div class="room-header">${locName}</div><div class="plant-grid"></div>`;
             const grid = section.querySelector('.plant-grid');
 
-            roomPlants.forEach(plant => {
+            locPlants.forEach(plant => {
                 const id = plant.id;
                 const currentLevel = calculateDynamicMoisture(plant);
                 const activity = getActivityData(plant);
@@ -178,7 +180,7 @@
                 const card = document.createElement('div');
                 card.className = 'plant-card';
                 card.dataset.name = plant.name.toLowerCase();
-                card.dataset.room = roomName.toLowerCase();
+                card.dataset.location = locName.toLowerCase();
                 card.innerHTML = `
                     <div class="card-top">
                         <div class="photo-box" onclick="handlePhotoClick('${id}')">
@@ -227,7 +229,6 @@
         });
     }
 
-    // --- Core Logic ---
     async function executeSip(id) {
         if (!isAuthenticated) return;
         const plant = allPlants.find(p => p.id === id);
@@ -279,7 +280,6 @@
         g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
     }
 
-    // --- Utilities ---
     async function handlePhotoClick(id) { if (!isAuthenticated) { if (!await checkAuth()) return; } document.getElementById(`file-${id}`).click(); }
     async function uploadPhoto(id, input) {
         const file = input.files[0]; if (!file) return;
@@ -326,7 +326,7 @@
     function filterList() {
         const q = document.getElementById('search-bar').value.toLowerCase();
         document.querySelectorAll('.plant-card').forEach(card => {
-            const visible = card.dataset.name.includes(q) || card.dataset.room.includes(q);
+            const visible = card.dataset.name.includes(q) || card.dataset.location.includes(q);
             card.style.display = visible ? 'flex' : 'none';
         });
         document.querySelectorAll('.room-section').forEach(sec => {
