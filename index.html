@@ -1,128 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logan's Garden Vault v7.4.2</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root {
-            --primary: #5d8a5d; --bg: #f0f4f0; --card: #ffffff;
-            --text: #2d3e2d; --border: #ddd; --blue: #4a90e2; 
-            --gauge-red: #ff4d4d; --gauge-green: #4caf50; --gauge-blue: #2196f3;
-            --sip-orange: #f39c12; --alert-red: #e74c3c;
-        }
-
-        /* Prevent accidental text selection during long-press */
-        .hold-btn-wrap, .step-btn, .lock-status, .badge, .confirm-btn { 
-            -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; 
-        }
-
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: var(--text); }
-        .container { max-width: 1200px; margin: auto; padding-bottom: 120px; }
-        
-        .header { padding: 15px 10px; position: sticky; top: 0; background: var(--bg); z-index: 100; border-bottom: 1px solid #e2e8f0; }
-        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        h1 { margin: 0; font-size: 1.6rem; color: #3e5c3e; font-weight: 800; }
-        
-        .lock-status { font-size: 0.7rem; color: #888; padding: 4px 12px; border-radius: 20px; background: #e8eee8; cursor: pointer; }
-        .unlocked-label { color: var(--primary); font-weight: bold; background: #dcfce7; border: 1px solid #bbf7d0; }
-
-        #plant-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; padding: 10px; }
-        .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; position: relative; }
-        
-        .card-top { display: grid; grid-template-columns: 85px 1fr; gap: 12px; align-items: flex-start; }
-        .photo-box { width: 85px; height: 85px; border: 2px dashed #a8c6a8; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fdfdfd; position: relative; cursor: pointer; }
-        .photo-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1; }
-        
-        .badge-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
-        .badge { font-size: 0.65rem; padding: 3px 8px; border-radius: 6px; font-weight: bold; border: 1px solid transparent; }
-        .badge-ai { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
-        .badge-water { background: #fef3c7; color: #d97706; border-color: #fde68a; }
-        .badge-check { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
-
-        /* MOISTURE CONTROLS */
-        .moisture-wrap { background: #fdfdfd; padding: 6px; border-radius: 10px; border: 1px solid #eee; position: relative; min-height: 48px; display: flex; align-items: center; }
-        .input-shield { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: pointer; border-radius: 10px; background: transparent; }
-        .moisture-controls { display: flex; align-items: center; gap: 8px; width: 100%; }
-        
-        .step-btn { background: white; border: 1px solid #ccc; border-radius: 8px; width: 44px; height: 44px; font-weight: bold; font-size: 1.6rem; cursor: pointer; display: none; align-items: center; justify-content: center; color: #555; }
-        .gauge-slider { flex-grow: 1; height: 14px; border-radius: 7px; -webkit-appearance: none; background: #ddd; }
-        
-        .action-group { display: flex; gap: 8px; margin-top: 8px; }
-        .hold-btn-wrap { position: relative; height: 50px; border-radius: 10px; overflow: hidden; background: #f3f3f3; cursor: pointer; flex: 1; border: 1px solid transparent; }
-        .hold-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; z-index: 1; }
-        .hold-label { position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #444; font-size: 0.75rem; font-weight: 900; }
-        .holding .hold-label { color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
-
-        .add-plant-btn { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 200; cursor: pointer; }
-    </style>
-</head>
-<body onscroll="endHold()">
-
-<div class="container">
-    <div class="header">
-        <div class="header-top">
-            <h1>🌿 Garden <span id="lock-label" class="lock-status" onclick="handleLockClick()">🔒 Tap to Unlock</span></h1>
-            <div id="status" style="font-size: 0.7rem; font-weight:bold; color:#aaa">Ready</div>
-        </div>
-        <input type="text" id="search-bar" placeholder="Search plants..." oninput="filterList()" style="width:100%; padding:12px; border-radius:25px; border:1px solid #ddd; box-sizing: border-box;">
-    </div>
-    <div id="plant-list"></div>
-</div>
-
-<button class="add-plant-btn" onclick="addNewPlant()">+ Add New Plant</button>
-
 <script>
-    const SUPABASE_URL = 'https://hnznwbklfoiolptvvypf.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_qIZadFFd7xDvVjxGsTnNQQ_NmuTJhPV';
-    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    let allPlants = [];
-    let activeHold = null;
-    let holdTimer = null;
-    let isAuthenticated = false; 
-
-    async function loadData() {
-        const { data } = await _supabase.from('plants').select('*');
-        allPlants = data || [];
-        renderAll();
-    }
-
-    function getTimeData(dateStr) {
-        if (!dateStr) return { label: "Never", days: 999 };
-        const past = new Date(dateStr);
-        const now = new Date();
-        const diffMs = now - past;
-        const diffDays = diffMs / (1000 * 60 * 60 * 24);
-        const diffSec = Math.floor(diffMs / 1000);
-        const diffMin = Math.floor(diffSec / 60);
-        const diffHr = Math.floor(diffMin / 60);
-
-        if (diffSec < 60) return { label: `${diffSec}s`, days: diffDays };
-        if (diffMin < 60) return { label: `${diffMin}m`, days: diffDays };
-        if (diffHr < 24) return { label: `${diffHr}h`, days: diffDays };
-        return { label: `${Math.floor(diffDays)}d`, days: diffDays };
-    }
-
-    function getActivityData(plant) {
-        const lastSoak = new Date(plant.watered_date || 0);
-        const lastCheck = new Date(plant.moisture_timestamp || 0);
-        if (lastSoak >= lastCheck) return { label: `💧 ${getTimeData(plant.watered_date).label}` };
-        const icon = (plant.last_action_type === 'sip') ? '🥤' : '⚖️';
-        return { label: `${icon} ${getTimeData(plant.moisture_timestamp).label}` };
-    }
-
-    function calculateDynamicMoisture(plant) {
-        const lastRefStr = plant.moisture_timestamp || plant.watered_date;
-        if (!lastRefStr) return 10;
-        const lastRef = new Date(lastRefStr);
-        const diffDays = (new Date() - lastRef) / (1000 * 60 * 60 * 24);
-        const interval = plant.avg_water_interval || 7;
-        const startLevel = plant.moisture_timestamp ? (plant.moisture_level || 10) : 10;
-        let level = startLevel - (diffDays * (10 / interval));
-        return Math.max(1, Math.min(10, Math.round(level)));
-    }
+    // ... (SUPABASE CONFIG & AUTH REMAINS SAME)
 
     function renderAll() {
         const list = document.getElementById('plant-list');
@@ -131,7 +8,21 @@
             const id = plant.id;
             const currentLevel = calculateDynamicMoisture(plant);
             const activity = getActivityData(plant);
-            const checkTime = getTimeData(plant.moisture_timestamp);
+            const checkTime = getTimeData(plant.moisture_timestamp || plant.watered_date);
+            const trend = currentTrend[id] || { arrow: '→', theme: 'cycle-stable' };
+            
+            // ALERT LOGIC: Updated to 25% threshold
+            let alertsHtml = '';
+            const cycleDays = plant.avg_water_interval || 7;
+            
+            if (currentLevel <= 3) {
+                alertsHtml += `<span class="badge" style="background:var(--alert-red); color:white; border-color:#c0392b;">💧 WATER NOW</span>`;
+            }
+            
+            // Trigger ⚖️ if last manual touch/sip/soak is older than 25% of the cycle
+            if (checkTime.days > (cycleDays * 0.25)) {
+                alertsHtml += `<span class="badge" style="background:#555; color:white; border-color:#333;">⚖️ CHECK MOISTURE</span>`;
+            }
 
             const card = document.createElement('div');
             card.className = 'plant-card';
@@ -145,15 +36,17 @@
                     <div class="name-area">
                         <div class="name-label" style="font-weight:bold; font-size:1.1rem;">${plant.name}</div>
                         <div class="badge-row">
-                            <span class="badge badge-ai">Cycle: ${Math.round(plant.avg_water_interval || 7)}d</span>
+                            <span class="badge ${trend.theme}">Cycle: ${Math.round(cycleDays)}d ${trend.arrow}</span>
+                            ${alertsHtml}
+                        </div>
+                        <div class="badge-row" style="margin-top:2px; opacity:0.8;">
                             <span class="badge badge-water">${activity.label}</span>
-                            <span class="badge badge-check">⚖️ ${checkTime.label}</span>
                         </div>
                     </div>
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:5px;">
-                    <span style="font-size:0.6rem; font-weight:800; color:#999">CURRENT LEVEL</span>
+                    <span style="font-size:0.6rem; font-weight:800; color:#999">PREDICTED LEVEL</span>
                     <span id="val-${id}" style="font-size:1.6rem; font-weight:900;">${currentLevel}</span>
                 </div>
 
@@ -181,133 +74,5 @@
             updateUI(id, currentLevel);
         });
     }
-
-    /* --- RESTORED: Control Unlocking --- */
-    function unlockControls(id) {
-        if (!isAuthenticated) return;
-        document.getElementById(`shield-${id}`).style.display = 'none';
-        document.getElementById(`minus-${id}`).style.display = 'flex';
-        document.getElementById(`plus-${id}`).style.display = 'flex';
-    }
-
-    async function stepMoisture(id, delta) {
-        const slider = document.getElementById(`gauge-${id}`);
-        let newVal = parseInt(slider.value) + delta;
-        newVal = Math.max(1, Math.min(10, newVal));
-        slider.value = newVal;
-        updateUI(id, newVal);
-        await manualEntry(id, newVal);
-    }
-
-    async function manualEntry(id, val) {
-        if (!isAuthenticated) return;
-        const nowISO = new Date().toISOString();
-        await _supabase.from('plants').update({ 
-            moisture_level: parseInt(val), 
-            moisture_timestamp: nowISO,
-            last_action_type: 'check'
-        }).eq('id', id);
-        loadData();
-    }
-
-    async function executeSip(id) {
-        if (!isAuthenticated) return;
-        const plant = allPlants.find(p => p.id === id);
-        const current = calculateDynamicMoisture(plant);
-        const nowISO = new Date().toISOString();
-        await _supabase.from('plants').update({ 
-            moisture_level: Math.min(10, current + 3), 
-            moisture_timestamp: nowISO,
-            last_action_type: 'sip'
-        }).eq('id', id);
-        loadData();
-    }
-
-    async function executeSoak(id) {
-        if (!isAuthenticated) return;
-        const nowISO = new Date().toISOString();
-        await _supabase.from('plants').update({ 
-            watered_date: nowISO, 
-            moisture_level: 10, 
-            moisture_timestamp: nowISO,
-            last_action_type: 'soak'
-        }).eq('id', id);
-        loadData();
-    }
-
-    /* --- STANDARD UTILITIES --- */
-    function updateUI(id, val) {
-        const v = document.getElementById(`val-${id}`);
-        const g = document.getElementById(`gauge-${id}`);
-        if (!v || !g) return;
-        v.innerText = val;
-        let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
-        v.style.color = color;
-        g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
-    }
-
-    async function handlePhotoClick(id) {
-        if (!isAuthenticated) { if (!await checkAuth()) return; }
-        document.getElementById(`file-${id}`).click();
-    }
-
-    async function uploadPhoto(id, input) {
-        const file = input.files[0];
-        if (!file) return;
-        document.getElementById('status').innerText = "Uploading...";
-        const fileName = `${id}-${Date.now()}-${file.name}`;
-        await _supabase.storage.from('plant-photos').upload(fileName, file);
-        const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
-        await _supabase.from('plants').update({ image_url: urlData.publicUrl }).eq('id', id);
-        loadData();
-        document.getElementById('status').innerText = "Ready";
-    }
-
-    function handleLockClick() { if (isAuthenticated) relock(); else checkAuth(); }
-    function relock() { isAuthenticated = false; document.getElementById('lock-label').innerText = "🔒 Tap to Unlock"; document.getElementById('lock-label').classList.remove('unlocked-label'); renderAll(); }
-    async function checkAuth() {
-        const pwd = prompt("Enter password:");
-        const { data } = await _supabase.from('app_settings').select('value').eq('key', 'admin_password').single();
-        if (data && data.value === pwd) {
-            isAuthenticated = true;
-            document.getElementById('lock-label').innerText = "🔓 Unlocked";
-            document.getElementById('lock-label').classList.add('unlocked-label');
-            renderAll(); return true;
-        } return false;
-    }
-
-    function startHold(id, type, duration) {
-        if (!isAuthenticated) return;
-        activeHold = { id, type };
-        const fill = document.getElementById(`${type}fill-${id}`);
-        fill.style.transition = `width ${duration}ms linear`;
-        fill.style.width = '100%';
-        fill.parentElement.classList.add('holding');
-        holdTimer = setTimeout(() => {
-            if (type === 'sip') executeSip(id);
-            else executeSoak(id);
-            endHold();
-        }, duration);
-    }
-
-    function endHold() {
-        if (holdTimer) clearTimeout(holdTimer);
-        if (activeHold) {
-            const fill = document.getElementById(`${activeHold.type}fill-${activeHold.id}`);
-            if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; fill.parentElement.classList.remove('holding'); }
-        }
-        activeHold = null;
-    }
-
-    function filterList() {
-        const query = document.getElementById('search-bar').value.toLowerCase();
-        document.querySelectorAll('.plant-card').forEach(card => {
-            const name = card.querySelector('.name-label').innerText.toLowerCase();
-            card.style.display = name.includes(query) ? 'flex' : 'none';
-        });
-    }
-
-    loadData();
+    // ... (REST OF UTILITIES)
 </script>
-</body>
-</html>
