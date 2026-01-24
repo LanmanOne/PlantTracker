@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logan's Garden Vault v6.8</title>
+    <title>Logan's Garden Vault v6.9</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -13,8 +13,8 @@
             --sip-orange: #f39c12; --alert-red: #e74c3c;
         }
 
-        /* ANDROID GHOST-TOUCH PROTECTION */
-        .hold-btn-wrap, .step-btn, .lock-status, .badge, .alert-badge { 
+        /* PROTECTION */
+        .hold-btn-wrap, .step-btn, .lock-status, .badge, .alert-badge, .confirm-btn { 
             -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; 
         }
 
@@ -40,7 +40,10 @@
         
         .name-area { display: flex; flex-direction: column; gap: 2px; }
         .name-label { font-size: 1.1rem; font-weight: bold; color: #2d3e2d; }
+        
         .alert-badge { color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; font-weight: 900; display: inline-block; width: fit-content; margin-top: 2px; text-transform: uppercase; }
+        
+        .confirm-btn { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 0.6rem; padding: 4px 8px; font-weight: 800; cursor: pointer; margin-top: 4px; display: inline-block; text-transform: uppercase; width: fit-content; }
 
         .badge-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
         .badge { font-size: 0.65rem; padding: 3px 8px; border-radius: 6px; font-weight: bold; border: 1px solid transparent; }
@@ -163,8 +166,14 @@
                     <input type="file" id="file-${id}" style="display:none" accept="image/*,application/pdf" onchange="uploadPhoto('${id}', this)">
                     <div class="name-area">
                         <div class="name-label">${plant.name}</div>
-                        ${risk.isCritical ? '<div class="alert-badge" style="background:var(--alert-red)">⚠️ WATER NOW</div>' : 
-                          risk.isAtRisk ? '<div class="alert-badge" style="background:var(--sip-orange)">⚠️ VERIFY MOISTURE</div>' : ''}
+                        
+                        ${risk.isCritical ? 
+                            '<div class="alert-badge" style="background:var(--alert-red)">⚠️ WATER NOW</div>' : 
+                          risk.isAtRisk ? 
+                            `<div>
+                                <div class="alert-badge" style="background:var(--sip-orange)">⚠️ VERIFY MOISTURE</div>
+                                <div class="confirm-btn" onclick="confirmCurrentLevel('${id}', ${currentLevel})">✓ Confirm ${currentLevel}</div>
+                             </div>` : ''}
                         
                         <div class="badge-row">
                             <span class="badge badge-ai">Cycle: ${Math.round(plant.avg_water_interval || 7)}d</span>
@@ -204,7 +213,14 @@
         });
     }
 
-    /* --- STEPPER LOGIC --- */
+    /* --- LOGIC --- */
+    async function confirmCurrentLevel(id, val) {
+        if (!isAuthenticated) { if (!await checkAuth()) return; }
+        const nowISO = new Date().toISOString();
+        await _supabase.from('plants').update({ moisture_level: val, moisture_timestamp: nowISO }).eq('id', id);
+        loadData();
+    }
+
     async function stepMoisture(id, delta) {
         const slider = document.getElementById(`gauge-${id}`);
         let newVal = parseInt(slider.value) + delta;
@@ -227,7 +243,6 @@
         loadData();
     }
 
-    /* --- OTHER HANDLERS --- */
     function handleLockClick() { if (isAuthenticated) relock(); else checkAuth(); }
     function relock() { isAuthenticated = false; document.getElementById('lock-label').innerText = "🔒 Tap to Unlock"; document.getElementById('lock-label').classList.remove('unlocked-label'); renderAll(); }
     async function checkAuth() {
