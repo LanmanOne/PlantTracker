@@ -26,66 +26,53 @@
         }
         .unlocked-label { color: var(--primary); font-weight: bold; background: #dcfce7; border: 1px solid #bbf7d0; }
 
-        .filter-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
-        .search-group { display: flex; gap: 10px; }
-        #search-bar { flex: 2; padding: 12px 15px; border-radius: 25px; border: 1px solid var(--border); font-size: 1rem; outline: none; }
-        #room-filter { flex: 1; padding: 0 15px; border-radius: 25px; border: 1px solid var(--border); font-size: 0.9rem; background: white; outline: none; }
-        
-        .sort-btn { 
-            background: white; border: 1px solid var(--border); padding: 8px 15px; 
-            border-radius: 20px; font-size: 0.8rem; font-weight: bold; cursor: pointer;
-            color: #666; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px;
-        }
-        .sort-active { background: var(--primary); color: white; border-color: var(--primary); }
-
         #plant-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; padding: 10px; }
-        .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; position: relative; border-left: 5px solid transparent; }
+        .plant-card { background: var(--card); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; position: relative; border-left: 5px solid transparent; }
         .card-dry { border-left-color: var(--gauge-red); background: #fff9f9; }
 
-        .card-header { display: flex; justify-content: space-between; align-items: center; }
-        .location-input { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #888; border: none; background: transparent; outline: none; font-weight: bold; flex: 1; }
-        .btn-delete { background: none; border: none; cursor: pointer; font-size: 1.1rem; color: #ccc; }
-
-        .card-top { display: grid; grid-template-columns: 80px 1fr; gap: 15px; align-items: flex-start; }
-        .photo-box { width: 80px; height: 80px; border: 2px dashed #a8c6a8; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fafafa; cursor: pointer; position: relative; }
+        .card-top { display: grid; grid-template-columns: 75px 1fr; gap: 12px; align-items: flex-start; }
+        .photo-box { width: 75px; height: 75px; border: 2px dashed #a8c6a8; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fafafa; cursor: pointer; position: relative; }
         .photo-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; pointer-events: none; }
         .photo-label { font-size: 0.6rem; font-weight: bold; color: #888; pointer-events: none; }
 
-        .name-input { font-size: 1.1rem; font-weight: bold; border: none; background: transparent; outline: none; width: 100%; margin-bottom: 2px; }
-        .notes-input { font-size: 0.8rem; color: #666; border: none; background: transparent; outline: none; width: 100%; font-style: italic; }
+        .location-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; color: #888; font-weight: bold; }
+        .name-label { font-size: 1.1rem; font-weight: bold; margin-bottom: 1px; }
+        .notes-label { font-size: 0.8rem; color: #666; font-style: italic; display: block; margin-bottom: 5px; }
 
-        .moisture-wrap { background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #eee; margin-top: 5px; }
-        .moisture-controls { display: flex; align-items: center; gap: 12px; }
-        
-        .gauge-slider { 
-            flex-grow: 1; height: 10px; border-radius: 5px; -webkit-appearance: none; appearance: none; 
-            background: #ddd; transition: opacity 0.3s;
-        }
-        .gauge-slider.locked-mode { opacity: 0.3; pointer-events: none; }
-        .gauge-slider.unlocked-mode { opacity: 1; pointer-events: auto; cursor: pointer; }
+        /* MOISTURE SECTION */
+        .moisture-section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 5px; }
+        .moisture-title { font-size: 0.65rem; font-weight: 800; color: #999; text-transform: uppercase; }
+        .moisture-number { font-size: 1.4rem; font-weight: 900; line-height: 1; }
 
-        .badge-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
-        .badge-ai { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.6rem; padding: 3px 7px; border-radius: 6px; font-weight: bold; }
-        .badge-days { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; font-size: 0.6rem; padding: 3px 7px; border-radius: 6px; font-weight: bold; }
-        .badge-check { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; font-size: 0.6rem; padding: 3px 7px; border-radius: 6px; font-weight: bold; }
+        .moisture-wrap { background: #fdfdfd; padding: 6px; border-radius: 10px; border: 1px solid #eee; position: relative; min-height: 44px; display: flex; align-items: center; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); }
+        .moisture-controls { display: flex; align-items: center; gap: 6px; width: 100%; z-index: 1; }
         
-        .badge-reminder { 
-            background: #fff7ed; color: #ea580c; border: 1px solid #fdba74; 
-            font-size: 0.6rem; padding: 3px 7px; border-radius: 6px; font-weight: bold; 
-            animation: pulse 2s infinite; 
-        }
-        .badge-emergency { background: #fee2e2 !important; color: #b91c1c !important; border-color: #fecaca !important; animation: pulse-fast 1s infinite !important; }
+        .step-btn { background: white; border: 1px solid #ccc; border-radius: 8px; width: 36px; height: 36px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .gauge-slider { flex-grow: 1; height: 12px; border-radius: 6px; -webkit-appearance: none; appearance: none; background: #ddd; pointer-events: auto; }
+        
+        .input-shield { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: pointer; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.01); }
+        .unlock-hint { background: rgba(255,255,255,0.9); color: var(--primary); font-size: 0.6rem; padding: 4px 10px; border-radius: 15px; font-weight: bold; border: 1px solid var(--primary); opacity: 0; transition: opacity 0.2s; }
+        .input-shield:hover .unlock-hint { opacity: 1; }
 
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-        @keyframes pulse-fast { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        /* BADGES */
+        .badge-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+        .badge { font-size: 0.6rem; padding: 3px 6px; border-radius: 6px; font-weight: bold; border: 1px solid transparent; }
+        .badge-ai { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+        .badge-days { background: #fef3c7; color: #d97706; border-color: #fde68a; }
+        .badge-check { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
 
-        .action-group { display: flex; gap: 8px; align-items: center; }
-        .sip-btn { background: var(--sip-orange); color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 0.65rem; font-weight: bold; cursor: pointer; height: 38px; }
+        /* ACTION BUTTONS */
+        .action-group { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+        .hold-btn-wrap { position: relative; height: 44px; border-radius: 10px; overflow: hidden; background: #f0f0f0; cursor: pointer; flex: 1; border: 1px solid transparent; }
+        .hold-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; z-index: 1; }
+        .hold-label { position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #444; font-size: 0.7rem; font-weight: bold; pointer-events: none; text-align: center; }
         
-        .water-btn-wrap { position: relative; width: 100px; height: 38px; overflow: hidden; border-radius: 8px; background: var(--blue); }
-        .water-btn { position: relative; z-index: 2; width: 100%; height: 100%; background: transparent; color: white; border: none; font-size: 0.65rem; font-weight: bold; cursor: pointer; }
-        .water-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: var(--dark-blue); transition: width 1s linear; z-index: 1; }
-        
+        .sip-wrap { border-color: var(--sip-orange); }
+        .sip-fill { background: var(--sip-orange); transition: width 0.1s linear; }
+        .soak-wrap { border-color: var(--blue); }
+        .soak-fill { background: var(--blue); transition: width 0.1s linear; }
+        .holding .hold-label { color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+
         .add-plant-btn { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 200; cursor: pointer; }
         #status { font-size: 0.8rem; font-weight: bold; color: #aaa; }
     </style>
@@ -98,13 +85,7 @@
             <h1>🌿 Garden <span id="lock-label" class="lock-status" onclick="handleLockClick()">🔒 Tap to Unlock</span></h1>
             <div id="status">Ready</div>
         </div>
-        <div class="filter-row">
-            <div class="search-group">
-                <input type="text" id="search-bar" placeholder="Search plants..." oninput="filterList()">
-                <select id="room-filter" onchange="filterList()"><option value="">All Rooms</option></select>
-            </div>
-            <button id="sort-thirst-btn" class="sort-btn" onclick="toggleSort()">📊 Sort: Alphabetical</button>
-        </div>
+        <input type="text" id="search-bar" placeholder="Search plants..." oninput="filterList()" style="width:100%; padding:12px; border-radius:25px; border:1px solid #ddd; box-sizing: border-box;">
     </div>
     <div id="plant-list"></div>
 </div>
@@ -117,78 +98,41 @@
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let allPlants = [];
-    let waterTimer, syncTimer;
+    let activeHold = null;
+    let holdTimer = null;
     let isAuthenticated = false; 
-    let sortByThirst = false;
 
     async function loadData() {
         const { data } = await _supabase.from('plants').select('*');
         allPlants = data || [];
-        updateRoomDropdown();
         renderAll();
     }
 
-    function toggleSort() {
-        sortByThirst = !sortByThirst;
-        const btn = document.getElementById('sort-thirst-btn');
-        btn.innerText = sortByThirst ? "🔥 Sort: Thirstiest First" : "📊 Sort: Alphabetical";
-        btn.classList.toggle('sort-active', sortByThirst);
-        renderAll();
-    }
-
-    function handleLockClick() {
-        if (isAuthenticated) relock(); else checkAuth();
-    }
-    function relock() {
-        isAuthenticated = false;
-        const label = document.getElementById('lock-label');
-        label.innerText = "🔒 Tap to Unlock";
-        label.classList.remove('unlocked-label');
-        renderAll();
-    }
+    function handleLockClick() { if (isAuthenticated) relock(); else checkAuth(); }
+    function relock() { isAuthenticated = false; document.getElementById('lock-label').innerText = "🔒 Tap to Unlock"; document.getElementById('lock-label').classList.remove('unlocked-label'); renderAll(); }
     async function checkAuth() {
-        if (isAuthenticated) return true; 
         const pwd = prompt("Enter password:");
-        if (!pwd) return false;
         const { data } = await _supabase.from('app_settings').select('value').eq('key', 'admin_password').single();
         if (data && data.value === pwd) {
             isAuthenticated = true;
-            const label = document.getElementById('lock-label');
-            label.innerText = "🔓 Unlocked (Lock)";
-            label.classList.add('unlocked-label');
+            document.getElementById('lock-label').innerText = "🔓 Unlocked";
+            document.getElementById('lock-label').classList.add('unlocked-label');
             renderAll();
             return true;
-        } else {
-            alert("Wrong password.");
-            return false;
         }
+        return false;
     }
 
     function formatTimeAgo(dateStr) {
         if (!dateStr) return "Never";
-        const past = new Date(dateStr);
-        const now = new Date();
-        const diffInSec = Math.floor((now - past) / 1000);
-        
+        const diffInSec = Math.floor((new Date() - new Date(dateStr)) / 1000);
         if (diffInSec < 60) return "Just now";
-        if (diffInSec < 3600) return Math.floor(diffInSec / 60) + "m ago";
-        if (diffInSec < 86400) return Math.floor(diffInSec / 3600) + "h ago";
-        return Math.floor(diffInSec / 86400) + "d ago";
-    }
-
-    function calculateNewInterval(plant, observedLevel) {
-        if (!plant.watered_date || observedLevel >= 10) return null;
-        const lastWatered = new Date(plant.watered_date);
-        const daysPassed = (new Date() - lastWatered) / (1000 * 60 * 60 * 24);
-        if (daysPassed < 0.2) return null; 
-        const calculated = (daysPassed * 10) / (10 - observedLevel);
-        const currentInterval = plant.avg_water_interval || 7;
-        const learned = (currentInterval * 0.7) + (calculated * 0.3);
-        return learned; 
+        if (diffInSec < 3600) return Math.floor(diffInSec / 60) + "m";
+        if (diffInSec < 86400) return Math.floor(diffInSec / 3600) + "h";
+        return Math.floor(diffInSec / 86400) + "d";
     }
 
     function calculateDynamicMoisture(plant) {
-        if (!plant.watered_date) return plant.moisture_level || 5;
         const lastRef = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
         const daysSinceRef = (new Date() - lastRef) / (1000 * 60 * 60 * 24);
         const interval = plant.avg_water_interval || 7;
@@ -199,165 +143,156 @@
     function renderAll() {
         const list = document.getElementById('plant-list');
         list.innerHTML = '';
-        let displayPlants = [...allPlants];
-        
-        if (sortByThirst) {
-            displayPlants.sort((a, b) => calculateDynamicMoisture(a) - calculateDynamicMoisture(b));
-        } else {
-            displayPlants.sort((a, b) => a.name.localeCompare(b.name));
-        }
-
-        displayPlants.forEach(plant => {
+        allPlants.sort((a,b) => a.name.localeCompare(b.name)).forEach(plant => {
             const id = plant.id;
             const currentLevel = calculateDynamicMoisture(plant);
-            
-            // TIMELINE CALCULATIONS
-            const lastReadingDate = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
-            const diffMs = new Date() - lastReadingDate;
-            const daysSinceLastReading = diffMs / (1000 * 60 * 60 * 24);
-            const interval = plant.avg_water_interval || 7;
-            
-            const isOldReading = daysSinceLastReading > (interval * 0.7);
             const isRedZone = currentLevel <= 3;
-            const needsMeterCheck = isOldReading || isRedZone;
 
             const card = document.createElement('div');
             card.className = `plant-card ${isRedZone ? 'card-dry' : ''}`;
             card.innerHTML = `
-                <div class="card-header">
-                    <input type="text" class="location-input" value="${plant.location || 'UNSET ROOM'}" oninput="queueSync('${id}', 'location', this.value)">
-                    ${isAuthenticated ? `<button class="btn-delete" onclick="deletePlant('${id}')">🗑️</button>` : ''}
-                </div>
+                <div class="location-label">${plant.location || 'UNSET ROOM'}</div>
                 <div class="card-top">
                     <div class="photo-box" onclick="handlePhotoClick('${id}')">
                         <img src="${plant.image_url || ''}" style="${plant.image_url ? 'display:block' : 'display:none'}">
                         <span class="photo-label" style="${plant.image_url ? 'display:none' : 'display:block'}">PHOTO</span>
                     </div>
                     <input type="file" id="file-${id}" style="display:none" accept="image/*,application/pdf" onchange="uploadPhoto('${id}', this)">
-                    <div>
-                        <input type="text" class="name-input" value="${plant.name}" oninput="queueSync('${id}', 'name', this.value)">
-                        <input type="text" class="notes-input" placeholder="Add notes..." value="${plant.notes || ''}" oninput="queueSync('${id}', 'notes', this.value)">
-                        <div class="moisture-wrap">
-                            <div class="moisture-controls">
-                                <input type="range" id="gauge-${id}" 
-                                    class="gauge-slider ${isAuthenticated ? 'unlocked-mode' : 'locked-mode'}" 
-                                    min="1" max="10" value="${currentLevel}" 
-                                    oninput="updateUI('${id}', this.value)" 
-                                    onchange="manualEntry('${id}', this.value)">
-                                <span id="val-${id}" style="font-weight:bold; min-width: 20px;">${currentLevel}</span>
-                            </div>
-                        </div>
+                    <div style="flex:1">
+                        <div class="name-label">${plant.name}</div>
+                        <span class="notes-label">${plant.notes || 'No notes'}</span>
                     </div>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-                    <div class="badge-row">
-                        <span class="badge-ai">Cycle: ${Math.round(interval)}d</span>
-                        <span class="badge-days" title="Days since full soak">💧 ${formatTimeAgo(plant.watered_date)}</span>
-                        <span class="badge-check" title="Days since last sip or meter check">⚖️ ${formatTimeAgo(plant.moisture_timestamp)}</span>
-                        ${needsMeterCheck ? `<span class="badge-reminder ${isRedZone ? 'badge-emergency' : ''}">⚠️ CHECK WATER</span>` : ''}
+
+                <div class="moisture-section-header">
+                    <span class="moisture-title">Moisture Status</span>
+                    <span id="val-${id}" class="moisture-number">${currentLevel}</span>
+                </div>
+
+                <div class="moisture-wrap">
+                    <div id="shield-${id}" class="input-shield" onclick="unlockControls('${id}')">
+                        <span class="unlock-hint">TAP TO ADJUST</span>
                     </div>
-                    <div class="action-group">
-                        <button class="sip-btn" onclick="handleSip('${id}')">SIP</button>
-                        <div class="water-btn-wrap">
-                            <div id="fill-${id}" class="water-fill"></div>
-                            <button class="water-btn" onmousedown="handleWaterStart('${id}')" ontouchstart="handleWaterStart('${id}')">SOAK</button>
-                        </div>
+                    <div class="moisture-controls">
+                        <button id="minus-${id}" class="step-btn" style="visibility:hidden" onclick="stepMoisture('${id}', -1)">−</button>
+                        <input type="range" id="gauge-${id}" class="gauge-slider" min="1" max="10" value="${currentLevel}" oninput="updateUI('${id}', this.value)" onchange="manualEntry('${id}', this.value)">
+                        <button id="plus-${id}" class="step-btn" style="visibility:hidden" onclick="stepMoisture('${id}', 1)">+</button>
+                    </div>
+                </div>
+
+                <div class="badge-row">
+                    <span class="badge badge-ai">Cycle: ${Math.round(plant.avg_water_interval || 7)}d</span>
+                    <span class="badge badge-days">💧 ${formatTimeAgo(plant.watered_date)}</span>
+                    <span class="badge badge-check">⚖️ ${formatTimeAgo(plant.moisture_timestamp)}</span>
+                </div>
+
+                <div class="action-group">
+                    <div class="hold-btn-wrap sip-wrap" onmousedown="startHold('${id}', 'sip', 1500)" ontouchstart="startHold('${id}', 'sip', 1500)" onmouseup="endHold()" ontouchend="endHold()">
+                        <div id="sipfill-${id}" class="hold-fill sip-fill"></div>
+                        <div class="hold-label">SIP</div>
+                    </div>
+                    <div class="hold-btn-wrap soak-wrap" onmousedown="startHold('${id}', 'soak', 3000)" ontouchstart="startHold('${id}', 'soak', 3000)" onmouseup="endHold()" ontouchend="endHold()">
+                        <div id="soakfill-${id}" class="hold-fill soak-fill"></div>
+                        <div class="hold-label">SOAK</div>
                     </div>
                 </div>
             `;
             list.appendChild(card);
             updateUI(id, currentLevel);
         });
-        filterList();
     }
 
-    async function handleSip(id) {
-        if (!isAuthenticated) { if (!await checkAuth()) return; }
-        const plantIndex = allPlants.findIndex(p => p.id === id);
-        const currentLevel = calculateDynamicMoisture(allPlants[plantIndex]);
-        const newLevel = Math.min(10, currentLevel + 3);
+    function unlockControls(id) {
+        if (!isAuthenticated) { alert("Unlock Garden first."); return; }
+        document.getElementById(`shield-${id}`).style.display = 'none';
+        document.getElementById(`minus-${id}`).style.visibility = 'visible';
+        document.getElementById(`plus-${id}`).style.visibility = 'visible';
+        setTimeout(() => { if(document.getElementById(`shield-${id}`)) renderAll(); }, 20000);
+    }
+
+    function stepMoisture(id, dir) {
+        const input = document.getElementById(`gauge-${id}`);
+        const newVal = Math.max(1, Math.min(10, parseInt(input.value) + dir));
+        input.value = newVal;
+        updateUI(id, newVal);
+        manualEntry(id, newVal);
+    }
+
+    function updateUI(id, val) {
+        const v = document.getElementById(`val-${id}`);
+        const g = document.getElementById(`gauge-${id}`);
+        if (!v || !g) return;
+        v.innerText = val;
+        let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
+        v.style.color = color;
+        g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
+    }
+
+    function startHold(id, type, duration) {
+        if (!isAuthenticated) return;
+        activeHold = { id, type };
+        const fill = document.getElementById(`${type}fill-${id}`);
+        fill.style.transition = `width ${duration}ms linear`;
+        fill.style.width = '100%';
+        fill.parentElement.classList.add('holding');
+        holdTimer = setTimeout(() => {
+            if (type === 'sip') executeSip(id);
+            else executeSoak(id);
+            endHold();
+        }, duration);
+    }
+
+    function endHold() {
+        if (holdTimer) clearTimeout(holdTimer);
+        if (activeHold) {
+            const fill = document.getElementById(`${activeHold.type}fill-${activeHold.id}`);
+            if (fill) {
+                fill.style.transition = 'none';
+                fill.style.width = '0%';
+                fill.parentElement.classList.remove('holding');
+            }
+        }
+        activeHold = null;
+    }
+
+    async function executeSip(id) {
+        const plant = allPlants.find(p => p.id === id);
+        const current = calculateDynamicMoisture(plant);
+        const newVal = Math.min(10, current + 3);
         const now = new Date().toISOString();
-        
-        allPlants[plantIndex].moisture_level = newLevel;
-        allPlants[plantIndex].moisture_timestamp = now;
-        
-        updateStatus("Sipping...", "saving");
-        await _supabase.from('plants').update({ moisture_level: newLevel, moisture_timestamp: now }).eq('id', id);
-        renderAll();
-        updateStatus("Sipped!", "saved");
+        await _supabase.from('plants').update({ moisture_level: newVal, moisture_timestamp: now }).eq('id', id);
+        loadData();
+    }
+
+    async function executeSoak(id) {
+        const now = new Date().toISOString();
+        const today = now.split('T')[0];
+        await _supabase.from('plants').update({ watered_date: today, moisture_level: 10, moisture_timestamp: now }).eq('id', id);
+        loadData();
     }
 
     async function manualEntry(id, val) {
-        if (!isAuthenticated) { if (!await checkAuth()) { loadData(); return; } }
-        const intVal = parseInt(val);
         const now = new Date().toISOString();
-        const plantIndex = allPlants.findIndex(p => p.id === id);
-        const plant = allPlants[plantIndex];
-
-        let learnedInterval = calculateNewInterval(plant, intVal);
+        const plant = allPlants.find(p => p.id === id);
+        const intVal = parseInt(val);
+        const learned = calculateNewInterval(plant, intVal);
         const updateData = { moisture_level: intVal, moisture_timestamp: now };
-        
-        if (learnedInterval) {
-            const rounded = Math.round(learnedInterval);
-            updateData.avg_water_interval = rounded;
-            plant.avg_water_interval = rounded;
-        }
+        if (learned) updateData.avg_water_interval = Math.round(learned);
+        await _supabase.from('plants').update(updateData).eq('id', id);
+        loadData();
+    }
 
-        updateStatus("Syncing...", "saving");
-        const { error } = await _supabase.from('plants').update(updateData).eq('id', id);
-        
-        if (error) {
-            alert("SAVE ERROR: " + error.message);
-            updateStatus("Failed", "red");
-            await loadData();
-        } else {
-            plant.moisture_level = intVal;
-            plant.moisture_timestamp = now;
-            renderAll();
-            updateStatus("Saved", "saved");
-        }
+    function calculateNewInterval(plant, observedLevel) {
+        if (!plant.watered_date || observedLevel >= 10) return null;
+        const daysPassed = (new Date() - new Date(plant.watered_date)) / (1000 * 60 * 60 * 24);
+        if (daysPassed < 0.2) return null; 
+        const calculated = (daysPassed * 10) / (10 - observedLevel);
+        return ((plant.avg_water_interval || 7) * 0.7) + (calculated * 0.3);
     }
 
     async function handlePhotoClick(id) {
         if (!isAuthenticated) { if (!await checkAuth()) return; }
         document.getElementById(`file-${id}`).click();
-    }
-
-    async function handleWaterStart(id) {
-        if (!isAuthenticated) { if (!await checkAuth()) return; }
-        startWater(id);
-    }
-
-    async function startWater(id) {
-        document.getElementById(`fill-${id}`).style.width = '100%';
-        waterTimer = setTimeout(async () => {
-            const today = new Date().toISOString().split('T')[0];
-            const now = new Date().toISOString();
-            const plantIndex = allPlants.findIndex(p => p.id === id);
-            
-            if (plantIndex !== -1) {
-                allPlants[plantIndex].watered_date = today;
-                allPlants[plantIndex].moisture_level = 10;
-                allPlants[plantIndex].moisture_timestamp = now;
-            }
-            
-            await _supabase.from('plants').update({ watered_date: today, moisture_level: 10, moisture_timestamp: now }).eq('id', id);
-            renderAll();
-            updateStatus("Watered!", "saved");
-        }, 1000);
-    }
-
-    async function queueSync(id, col, val) {
-        if (!isAuthenticated) { if (!await checkAuth()) { loadData(); return; } }
-        const plantIndex = allPlants.findIndex(p => p.id === id);
-        if (plantIndex !== -1) allPlants[plantIndex][col] = val;
-        updateStatus("Saving...", "saving");
-        clearTimeout(syncTimer);
-        syncTimer = setTimeout(async () => {
-            await _supabase.from('plants').update({ [col]: val }).eq('id', id);
-            if (col === 'location') updateRoomDropdown();
-            updateStatus("Saved", "saved");
-        }, 800);
     }
 
     async function uploadPhoto(id, input) {
@@ -368,59 +303,20 @@
         await _supabase.storage.from('plant-photos').upload(fileName, file);
         const { data: urlData } = _supabase.storage.from('plant-photos').getPublicUrl(fileName);
         await _supabase.from('plants').update({ image_url: urlData.publicUrl }).eq('id', id);
-        const plantIndex = allPlants.findIndex(p => p.id === id);
-        if (plantIndex !== -1) allPlants[plantIndex].image_url = urlData.publicUrl;
-        renderAll();
-        updateStatus("Uploaded", "saved");
+        loadData();
     }
 
-    async function deletePlant(id) {
-        if (!confirm("Permanently remove?")) return;
-        await _supabase.from('plants').delete().eq('id', id);
-        allPlants = allPlants.filter(p => p.id !== id);
-        renderAll();
-    }
-
-    async function addNewPlant() {
-        if (!isAuthenticated) { if (!await checkAuth()) return; }
-        const n = prompt("Plant Name:");
-        if (n) {
-            const { data } = await _supabase.from('plants').insert([{ name: n, moisture_level: 10, watered_date: new Date().toISOString().split('T')[0], avg_water_interval: 7 }]).select();
-            if (data) { allPlants.push(data[0]); renderAll(); }
-        }
-    }
-
-    function updateUI(id, val) {
-        const v = document.getElementById(`val-${id}`);
-        const g = document.getElementById(`gauge-${id}`);
-        if(!v || !g) return;
-        v.innerText = val;
-        let color = val >= 8 ? 'var(--gauge-blue)' : (val >= 4 ? 'var(--gauge-green)' : 'var(--gauge-red)');
-        v.style.color = color;
-        g.style.background = `linear-gradient(to right, ${color} ${val * 10}%, #ddd ${val * 10}%)`;
-    }
-
-    function updateRoomDropdown() {
-        const dropdown = document.getElementById('room-filter');
-        const rooms = [...new Set(allPlants.map(p => p.location).filter(l => l))];
-        dropdown.innerHTML = '<option value="">All Rooms</option>' + rooms.map(r => `<option value="${r}">${r}</option>`).join('');
+    function updateStatus(t, c) { 
+        const s = document.getElementById('status'); s.innerText = t; 
+        s.style.color = c === 'saved' ? '#2ecc71' : '#f39c12'; 
     }
 
     function filterList() {
         const query = document.getElementById('search-bar').value.toLowerCase();
-        const room = document.getElementById('room-filter').value;
         document.querySelectorAll('.plant-card').forEach(card => {
-            const name = card.querySelector('.name-input').value.toLowerCase();
-            const notes = card.querySelector('.notes-input').value.toLowerCase();
-            const loc = card.querySelector('.location-input').value;
-            card.style.display = ((name.includes(query) || notes.includes(query)) && (!room || loc === room)) ? 'flex' : 'none';
+            const name = card.querySelector('.name-label').innerText.toLowerCase();
+            card.style.display = name.includes(query) ? 'flex' : 'none';
         });
-    }
-
-    function updateStatus(t, c) { 
-        const s = document.getElementById('status'); 
-        s.innerText = t; 
-        s.style.color = c === 'saving' ? '#f39c12' : (c === 'red' ? '#e74c3c' : '#2ecc71'); 
     }
 
     loadData();
