@@ -164,6 +164,18 @@
         }
     }
 
+    function formatTimeAgo(dateStr) {
+        if (!dateStr) return "Never";
+        const past = new Date(dateStr);
+        const now = new Date();
+        const diffInSec = Math.floor((now - past) / 1000);
+        
+        if (diffInSec < 60) return "Just now";
+        if (diffInSec < 3600) return Math.floor(diffInSec / 60) + "m ago";
+        if (diffInSec < 86400) return Math.floor(diffInSec / 3600) + "h ago";
+        return Math.floor(diffInSec / 86400) + "d ago";
+    }
+
     function calculateNewInterval(plant, observedLevel) {
         if (!plant.watered_date || observedLevel >= 10) return null;
         const lastWatered = new Date(plant.watered_date);
@@ -184,12 +196,6 @@
         return Math.max(1, Math.min(10, Math.round(level)));
     }
 
-    function calculateDaysSince(dateStr) {
-        if (!dateStr) return 0;
-        const diff = new Date() - new Date(dateStr);
-        return Math.floor(diff / (1000 * 60 * 60 * 24));
-    }
-
     function renderAll() {
         const list = document.getElementById('plant-list');
         list.innerHTML = '';
@@ -204,15 +210,11 @@
         displayPlants.forEach(plant => {
             const id = plant.id;
             const currentLevel = calculateDynamicMoisture(plant);
-            const daysAgoRaw = calculateDaysSince(plant.watered_date);
-            const checkAgoRaw = calculateDaysSince(plant.moisture_timestamp);
             
-            const daysAgoText = daysAgoRaw === 0 ? "Today" : `${daysAgoRaw}d`;
-            const checkAgoText = checkAgoRaw === 0 ? "Today" : `${checkAgoRaw}d`;
-            
-            // RED ZONE ALERT LOGIC
+            // TIMELINE CALCULATIONS
             const lastReadingDate = plant.moisture_timestamp ? new Date(plant.moisture_timestamp) : new Date(plant.watered_date);
-            const daysSinceLastReading = (new Date() - lastReadingDate) / (1000 * 60 * 60 * 24);
+            const diffMs = new Date() - lastReadingDate;
+            const daysSinceLastReading = diffMs / (1000 * 60 * 60 * 24);
             const interval = plant.avg_water_interval || 7;
             
             const isOldReading = daysSinceLastReading > (interval * 0.7);
@@ -250,8 +252,8 @@
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
                     <div class="badge-row">
                         <span class="badge-ai">Cycle: ${Math.round(interval)}d</span>
-                        <span class="badge-days" title="Days since full soak">💧 ${daysAgoText}</span>
-                        <span class="badge-check" title="Days since last sip or meter check">⚖️ ${checkAgoText}</span>
+                        <span class="badge-days" title="Days since full soak">💧 ${formatTimeAgo(plant.watered_date)}</span>
+                        <span class="badge-check" title="Days since last sip or meter check">⚖️ ${formatTimeAgo(plant.moisture_timestamp)}</span>
                         ${needsMeterCheck ? `<span class="badge-reminder ${isRedZone ? 'badge-emergency' : ''}">⚠️ CHECK WATER</span>` : ''}
                     </div>
                     <div class="action-group">
