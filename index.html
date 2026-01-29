@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logan's Garden Vault v7.5.8</title>
+    <title>Logan's Garden Vault v7.5.9</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -89,7 +89,7 @@
     <div class="modal-content">
         <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
             <h3 id="modal-title" style="margin:0">Notes</h3>
-            <button onclick="closeNotes()" style="background:none; border:none; font-size:1.5rem;">&times;</button>
+            <button onclick="closeNotes()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
         </div>
         <textarea id="modal-textarea" style="width:100%; height:200px; border:1px solid #ddd; border-radius:10px; padding:10px; font-family:inherit; box-sizing:border-box;"></textarea>
         <div style="display:flex; justify-content:flex-end; margin-top:15px;">
@@ -154,6 +154,38 @@
         return Math.max(1, Math.min(10, Math.round(startLevel - (diffDays * (10 / interval)))));
     }
 
+    async function toggleOutdoor(id, isChecked) {
+        if (!isAuthenticated) return;
+        await _supabase.from('plants').update({ is_outdoor: isChecked }).eq('id', id);
+        const p = allPlants.find(x => x.id === id);
+        if(p) p.is_outdoor = isChecked;
+        document.getElementById('status').innerText = isChecked ? "Outdoor Mode Active" : "Indoor Mode Active";
+    }
+
+    async function updateCycleData(plant, newLevel, actionType) {
+        const lastRef = plant.moisture_timestamp || plant.watered_date;
+        if (!lastRef) return;
+        const diffDays = (new Date() - new Date(lastRef)) / (1000 * 60 * 60 * 24);
+        if (diffDays < 0.25) return;
+        
+        const pointsDropped = (plant.moisture_level || 10) - (actionType === 'check' ? newLevel : calculateDynamicMoisture(plant));
+        if (pointsDropped > 0.5) {
+            const measured = 10 / (pointsDropped / diffDays);
+            
+            // Dynamic Weighting: Outdoors is more sensitive to recent changes
+            const newWeight = plant.is_outdoor ? 0.7 : 0.3;
+            const oldWeight = 1 - newWeight;
+            const weighted = (plant.avg_water_interval * oldWeight) + (measured * newWeight);
+
+            let arrow = '→', theme = 'cycle-stable';
+            if (measured < plant.avg_water_interval * 0.85) { arrow = '↓'; theme = 'cycle-faster'; }
+            else if (measured > plant.avg_water_interval * 1.15) { arrow = '↑'; theme = 'cycle-slower'; }
+            currentTrend[plant.id] = { arrow, theme };
+            
+            await _supabase.from('plants').update({ avg_water_interval: Math.max(1, Math.min(30, weighted)) }).eq('id', plant.id);
+        }
+    }
+
     function renderAll() {
         const container = document.getElementById('location-container');
         container.innerHTML = '';
@@ -203,6 +235,11 @@
                                 <span class="badge badge-water">${activityLabel}</span>
                                 <button class="notes-btn" onclick="openNotes('${id}')">📝 Notes</button>
                             </div>
+                            <div class="badge-row" style="margin-top:6px;">
+                                <label style="font-size:0.6rem; font-weight:800; color:#777; display:flex; align-items:center; gap:4px; cursor:pointer;">
+                                    <input type="checkbox" ${plant.is_outdoor ? 'checked' : ''} onchange="toggleOutdoor('${id}', this.checked)"> OUTDOOR (SENSITIVE)
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:5px;">
@@ -235,10 +272,8 @@
         });
     }
 
-    // --- Notes Modal Logic ---
     function openNotes(id) {
-        const p = allPlants.find(x => x.id === id);
-        activeNotesId = id;
+        const p = allPlants.find(x => x.id === id); activeNotesId = id;
         document.getElementById('modal-title').innerText = p.name;
         document.getElementById('modal-textarea').value = p.notes || "";
         document.getElementById('notes-modal').style.display = 'flex';
@@ -248,24 +283,6 @@
         if (!isAuthenticated && !await checkAuth()) return;
         await _supabase.from('plants').update({ notes: document.getElementById('modal-textarea').value }).eq('id', activeNotesId);
         closeNotes(); loadData();
-    }
-
-    // --- Standard Logic Restored ---
-    async function updateCycleData(plant, newLevel, actionType) {
-        const lastRef = plant.moisture_timestamp || plant.watered_date;
-        if (!lastRef) return;
-        const diffDays = (new Date() - new Date(lastRef)) / (1000 * 60 * 60 * 24);
-        if (diffDays < 0.25) return;
-        const pointsDropped = (plant.moisture_level || 10) - (actionType === 'check' ? newLevel : calculateDynamicMoisture(plant));
-        if (pointsDropped > 0.5) {
-            const measured = 10 / (pointsDropped / diffDays);
-            let arrow = '→', theme = 'cycle-stable';
-            if (measured < plant.avg_water_interval * 0.85) { arrow = '↓'; theme = 'cycle-faster'; }
-            else if (measured > plant.avg_water_interval * 1.15) { arrow = '↑'; theme = 'cycle-slower'; }
-            currentTrend[plant.id] = { arrow, theme };
-            const weighted = (plant.avg_water_interval * 0.7) + (measured * 0.3);
-            await _supabase.from('plants').update({ avg_water_interval: Math.max(1, Math.min(30, weighted)) }).eq('id', plant.id);
-        }
     }
 
     async function executeSip(id) { if (!isAuthenticated) return; const p = allPlants.find(x => x.id === id); const cur = calculateDynamicMoisture(p); await updateCycleData(p, cur, 'sip'); await _supabase.from('plants').update({ moisture_level: Math.min(10, cur + 3), moisture_timestamp: new Date().toISOString(), last_action_type: 'sip' }).eq('id', id); loadData(); }
