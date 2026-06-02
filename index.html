@@ -344,7 +344,30 @@
                   oninput="filterList()"
                />
             </div>
+            <div
+               id="summary-bar"
+               style="
+                  display: flex;
+                  gap: 15px;
+                  margin-top: 12px;
+                  font-size: 0.8rem;
+                  font-weight: 800;
+                  padding: 5px 10px;
+               "
+            >
+               <span
+                  id="stat-red"
+                  style="color: var(--gauge-red); display: none"
+                  >❤️ 0 Critical (Level ≤ 3)</span
+               >
+               <span
+                  id="stat-orange"
+                  style="color: var(--sip-orange); display: none"
+                  >🥤 0 Retest Warnings</span
+               >
+            </div>
          </div>
+
          <div id="location-container"></div>
       </div>
 
@@ -558,6 +581,35 @@
          function renderAll() {
             const container = document.getElementById("location-container");
             container.innerHTML = "";
+            // Initialize count metrics
+            let redCount = 0;
+            let orangeCount = 0;
+
+            // Scan all active plants for alert classes or critical levels
+            allPlants.forEach((plant) => {
+               const currentLevel = calculateDynamicMoisture(plant);
+               if (currentLevel <= 3) redCount++;
+
+               if (getAlertClass(plant) === "needs-retest") orangeCount++;
+            });
+
+            // Update UI DOM nodes for the summary stats panel
+            const elRed = document.getElementById("stat-red");
+            const elOrange = document.getElementById("stat-orange");
+
+            if (redCount > 0) {
+               elRed.innerText = `❤️ ${redCount} Critical (Level ≤ 3)`;
+               elRed.style.display = "inline";
+            } else {
+               elRed.style.display = "none";
+            }
+
+            if (orangeCount > 0) {
+               elOrange.innerText = `🥤 ${orangeCount} Retest Warning${orangeCount > 1 ? "s" : ""}`;
+               elOrange.style.display = "inline";
+            } else {
+               elOrange.style.display = "none";
+            }
             const locations = [
                ...new Set(allPlants.map((p) => p.location || "Unknown")),
             ].sort();
