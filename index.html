@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
    <head>
@@ -417,6 +418,8 @@
          </div>
       </div>
 
+
+
       <button
          style="
             position: fixed;
@@ -500,17 +503,19 @@
          function calculateDynamicMoisture(plant) {
             const lastRefStr = plant.moisture_timestamp || plant.watered_date;
             if (!lastRefStr) return 10;
-            const diffDays =
-               (new Date() - new Date(lastRefStr)) / (1000 * 60 * 60 * 24);
-            const interval = plant.avg_water_interval || 7;
-            const startLevel = plant.moisture_timestamp
-               ? plant.moisture_level || 10
-               : 10;
+            const diffDays = (new Date() - new Date(lastRefStr)) / (1000 * 60 * 60 * 24);
+            
+            // Apply the macro multiplier to scale the effective interval
+            const baseInterval = plant.avg_water_interval || 7;
+            const multiplier = plant.cycle_multiplier || 1.0;
+            const effectiveInterval = baseInterval * multiplier;
+            
+            const startLevel = plant.moisture_timestamp ? (plant.moisture_level || 10) : 10;
             return Math.max(
                1,
                Math.min(
                   10,
-                  Math.round(startLevel - diffDays * (10 / interval)),
+                  Math.round(startLevel - diffDays * (10 / effectiveInterval)),
                ),
             );
          }
@@ -545,26 +550,26 @@
          async function updateCycleData(plant, newLevel, actionType) {
             const lastRef = plant.moisture_timestamp || plant.watered_date;
             if (!lastRef) return;
-            const diffDays =
-               (new Date() - new Date(lastRef)) / (1000 * 60 * 60 * 24);
+            const diffDays = (new Date() - new Date(lastRef)) / (1000 * 60 * 60 * 24);
             if (diffDays < 0.25) return;
-            const pointsDropped =
-               (plant.moisture_level || 10) -
-               (actionType === "check"
-                  ? newLevel
-                  : calculateDynamicMoisture(plant));
+            const pointsDropped = (plant.moisture_level || 10) - (actionType === "check" ? newLevel : calculateDynamicMoisture(plant));
             if (pointsDropped > 0.5) {
                const measured = 10 / (pointsDropped / diffDays);
                const newWeight = plant.is_outdoor ? 0.7 : 0.3;
-               const weighted =
-                  plant.avg_water_interval * (1 - newWeight) +
-                  measured * newWeight;
-               let arrow = "→",
-                  theme = "cycle-stable";
-               if (measured < plant.avg_water_interval * 0.85) {
+               
+               // Read current macro adjustment
+               const multiplier = plant.cycle_multiplier || 1.0;
+               const currentEffectiveInterval = plant.avg_water_interval * multiplier;
+               
+               const weighted = currentEffectiveInterval * (1 - newWeight) + measured * newWeight;
+               // Re-normalize back to base interval state
+               const newBaseInterval = weighted / multiplier;
+
+               let arrow = "→", theme = "cycle-stable";
+               if (measured < currentEffectiveInterval * 0.85) {
                   arrow = "↓";
                   theme = "cycle-faster";
-               } else if (measured > plant.avg_water_interval * 1.15) {
+               } else if (measured > currentEffectiveInterval * 1.15) {
                   arrow = "↑";
                   theme = "cycle-slower";
                }
@@ -572,7 +577,7 @@
                await _supabase
                   .from("plants")
                   .update({
-                     avg_water_interval: Math.max(1, Math.min(30, weighted)),
+                     avg_water_interval: Math.max(1, Math.min(30, newBaseInterval)),
                   })
                   .eq("id", plant.id);
             }
@@ -661,11 +666,18 @@
                                   <span class="badge ${trend.theme}">Cycle: ${Math.round(plant.avg_water_interval || 7)}d ${trend.arrow}</span>
                                   <span class="badge badge-water" onclick="handleBadgeClick('${id}')">${activityLabel}</span>
                               </div>
-                              <div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
+                              <div style="display:flex; gap:6px; align-items:center; margin-top:8px; flex-wrap: wrap;">
                                   <button class="notes-btn" onclick="openNotes('${id}')">📝 Notes</button>
                                   <label style="font-size:0.6rem; font-weight:800; color:#777; display:flex; align-items:center; gap:3px;">
                                       <input type="checkbox" ${plant.is_outdoor ? "checked" : ""} onchange="toggleOutdoor('${id}', this.checked)"> OUTDOOR
                                   </label>
+                                  <select class="macro-tune" onchange="changeMacroTune('${id}', this.value)" style="width: auto; padding: 2px 6px; font-size: 0.6rem; font-weight: 800; border-radius: 4px; height: 20px; color: #555; border: 1px solid #ccc;">
+                                      <option value="0.7" ${plant.cycle_multiplier === 0.7 ? 'selected' : ''}>Slowing (0.7x)</option>
+                                      <option value="0.85" ${plant.cycle_multiplier === 0.85 ? 'selected' : ''}>Slow (0.85x)</option>
+                                      <option value="1.0" ${!plant.cycle_multiplier || plant.cycle_multiplier === 1.0 ? 'selected' : ''}>Normal (1.0x)</option>
+                                      <option value="1.25" ${plant.cycle_multiplier === 1.25 ? 'selected' : ''}>Stretch (1.25x)</option>
+                                      <option value="1.5" ${plant.cycle_multiplier === 1.5 ? 'selected' : ''}>Stretched (1.5x)</option>
+                                  </select>
                               </div>
                           </div>
                       </div>
@@ -779,8 +791,17 @@
             updateUI(id, sliderRef.value);
          }
          async function stepMoisture(id, delta) {
+            const p = allPlants.find(x => x.id === id);
+            const maxCeiling = calculateDynamicMoisture(p);
             const s = document.getElementById(`gauge-${id}`);
             let n = Math.max(1, Math.min(10, parseInt(s.value) + delta));
+            
+            if (n > maxCeiling) {
+               document.getElementById("status").innerText = "Blocked: Use SIP/SOAK to increase moisture";
+               setTimeout(() => { document.getElementById("status").innerText = "Ready"; }, 2000);
+               return; // Terminate execution immediately
+            }
+            
             s.value = n;
             updateUI(id, n);
             await manualEntry(id, n);
