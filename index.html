@@ -547,6 +547,24 @@
             if (p) p.is_outdoor = isChecked;
          }
 
+async function changeMacroTune(id, value) {
+            if (!isAuthenticated) return;
+            const parsedVal = parseFloat(value);
+            
+            // 1. Instantly update local memory state so the redraw reads it immediately
+            const p = allPlants.find((x) => x.id === id);
+            if (p) p.cycle_multiplier = parsedVal;
+            
+            // 2. Fire and forget the update to Supabase in the background
+            await _supabase
+               .from("plants")
+               .update({ cycle_multiplier: parsedVal })
+               .eq("id", id);
+               
+            // 3. Redraw the UI with the updated local state
+            renderAll();
+         }
+
          async function updateCycleData(plant, newLevel, actionType) {
             const lastRef = plant.moisture_timestamp || plant.watered_date;
             if (!lastRef) return;
