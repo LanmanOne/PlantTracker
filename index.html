@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
    <head>
@@ -6,7 +7,7 @@
          name="viewport"
          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
       />
-      <title>Logan's Garden Vault v6.24.26</title>
+      <title>Logan's Garden Vault v6.27.26</title>
       <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
       <style>
          :root {
@@ -484,59 +485,46 @@
             if (p) p.is_outdoor = isChecked;
          }
 
-         // Blended Micro Interval Adaptation Logic
-         async function updateCycleData(plant, newLevel) {
-            const lastRef = plant.moisture_timestamp || plant.watered_date;
-            if (!lastRef) return;
+      // Direction-Aware Micro Interval Adaptation Logic
+      async function updateCycleData(plant, newLevel) {
+          const lastRef = plant.moisture_timestamp || plant.watered_date;
+          if (!lastRef) return;
+          
+          const diffDays = (new Date() - new Date(lastRef)) / (1000 * 60 * 60 * 24);
+          const oldLevel = plant.moisture_level || 10;
+          if (oldLevel === newLevel) return;
 
-            const diffDays =
-               (new Date() - new Date(lastRef)) / (1000 * 60 * 60 * 24);
-            const oldLevel = plant.moisture_level || 10;
-            if (oldLevel === newLevel) return;
+          // Detect tick direction (+ vs -)
+          const isTickingUp = newLevel > oldLevel;
+          let weighted;
+          const newWeight = plant.is_outdoor ? 0.7 : 0.3;
 
-            // Detect tick direction (+ vs -)
-            const isTickingUp = newLevel > oldLevel;
-            let weighted;
-            const newWeight = plant.is_outdoor ? 0.7 : 0.3;
+          if (diffDays < 0.01) {
+              // Rapid consecutive clicks: '+' lengthens the interval, '-' shortens it
+              const stepDirection = isTickingUp ? 1.05 : 0.95; 
+              weighted = (plant.avg_water_interval || 7) * stepDirection;
+          } else {
+              // First manual evaluation: Scale the interval based on the ratio of the change.
+              // If newLevel > oldLevel (+), the ratio is > 1, extending the interval.
+              // If newLevel < oldLevel (-), the ratio is < 1, shortening the interval.
+              const scalingRatio = newLevel / oldLevel;
+              const measured = (plant.avg_water_interval || 7) * scalingRatio;
+              
+              if (isNaN(measured) || measured <= 0 || measured > 60) return;
 
-            if (diffDays < 0.01) {
-               // Rapid consecutive clicks: Shift the current interval by a 5% micro-step
-               const stepDirection = isTickingUp ? 1.05 : 0.95;
-               weighted = (plant.avg_water_interval || 7) * stepDirection;
-            } else {
-               // First manual evaluation: Calculate velocity relative to time elapsed
-               const totalDropCapacity = 10 - newLevel;
-               if (totalDropCapacity <= 0) return;
+              weighted = (plant.avg_water_interval * (1 - newWeight)) + (measured * newWeight);
+          }
 
-               const measured =
-                  totalDropCapacity /
-                  (diffDays / (10 / (plant.avg_water_interval || 7)));
-               if (isNaN(measured) || measured <= 0 || measured > 60) return;
+          let arrow = '→', theme = 'cycle-stable';
+          if (weighted < plant.avg_water_interval) { arrow = '↓'; theme = 'cycle-faster'; }
+          else if (weighted > plant.avg_water_interval) { arrow = '↑'; theme = 'cycle-slower'; }
+          currentTrend[plant.id] = { arrow, theme };
 
-               weighted =
-                  plant.avg_water_interval * (1 - newWeight) +
-                  measured * newWeight;
-            }
+          // Update active pointer state immediately so rapid next clicks build off the new state
+          plant.avg_water_interval = Math.max(1, Math.min(60, weighted));
 
-            let arrow = "→",
-               theme = "cycle-stable";
-            if (weighted < plant.avg_water_interval) {
-               arrow = "↓";
-               theme = "cycle-faster";
-            } else if (weighted > plant.avg_water_interval) {
-               arrow = "↑";
-               theme = "cycle-slower";
-            }
-            currentTrend[plant.id] = { arrow, theme };
-
-            // Update active pointer state immediately so rapid next clicks build off the new state
-            plant.avg_water_interval = Math.max(1, Math.min(60, weighted));
-
-            await _supabase
-               .from("plants")
-               .update({ avg_water_interval: plant.avg_water_interval })
-               .eq("id", plant.id);
-         }
+          await _supabase.from('plants').update({ avg_water_interval: plant.avg_water_interval }).eq('id', plant.id);
+      }
 
          function renderAll() {
             const container = document.getElementById("location-container");
